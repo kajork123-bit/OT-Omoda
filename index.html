@@ -1179,27 +1179,10 @@ function setupTheme() {
 
 function haptic(ms) { if (navigator.vibrate) navigator.vibrate(ms||10); }
 
-// SWIPE
+// SWIPE — ปิดการใช้งาน (disabled)
 const TAB_ORDER=['dashboard','ot','income','expense','stats','settings'];
-let _swipeX=0, _swipeY=0;
 function setupSwipe() {
-  const el=document.getElementById('app');
-  el.addEventListener('touchstart', e=>{ 
-    _swipeX=e.touches[0].clientX;
-    _swipeY=e.touches[0].clientY;
-  },{passive:true});
-  el.addEventListener('touchend', e=>{
-    const dx=e.changedTouches[0].clientX-_swipeX;
-    const dy=e.changedTouches[0].clientY-_swipeY;
-    // ตรวจสอบว่าเป็นการเลื่อนตั้งฉาก (scroll) หรือการเลื่อนแนวนอน (swipe)
-    // ถ้าการเลื่อนแนวตั้งมากกว่า ให้ละเว้นเพื่อไม่เปลี่ยนแท็บ
-    if (Math.abs(dy)>Math.abs(dx)) return;  // scroll แนวตั้งเยอะกว่า → ปล่อยให้ scroll
-    if (Math.abs(dx)<60) return;
-    const active=TAB_ORDER.findIndex(n=>document.getElementById('page-'+n).classList.contains('active'));
-    if (dx<0&&active<TAB_ORDER.length-1) switchTab(TAB_ORDER[active+1]);
-    if (dx>0&&active>0) switchTab(TAB_ORDER[active-1]);
-    haptic(8);
-  },{passive:true});
+  // Swipe gesture ปิดการใช้งาน — ใช้แท็บด้านบนแทน
 }
 
 // STATS
