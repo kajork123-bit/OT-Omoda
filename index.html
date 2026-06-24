@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OT Tracker – Omoda-Jecoo</title>
+
+<!-- PWA / iOS Home Screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OT Tracker">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#080c14">
+
+<!-- Web App Manifest -->
+<link rel="manifest" href="manifest.json">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap');
+  :root {
+    --bg: #080c14;
+    --surface: #0e1420;
+    --surface2: #141c2e;
+    --border: #1e2d47;
+    --accent: #00d4ff;
+    --accent2: #38eeff;
+    --accent-pink: #f040a0;
+    --accent-purple: #a855f7;
+    --green: #10f5a0;
+    --red: #ff5f7e;
+    --yellow: #ffd454;
+    --text: #e2eeff;
+    --text2: #6a84a8;
+    --text3: #374a66;
+    --glow-cyan: 0 0 18px rgba(0,212,255,0.35);
+    --glow-pink: 0 0 18px rgba(240,64,160,0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; background-image: radial-gradient(ellipse at 20% 0%, rgba(0,212,255,0.06) 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, rgba(240,64,160,0.06) 0%, transparent 60%); }
+
+  /* PIN SCREEN */
+  #pinScreen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; padding: 32px 24px; background-image: radial-gradient(ellipse at 50% 30%, rgba(0,212,255,0.08) 0%, transparent 70%); }
+  #pinScreen.hidden { display: none; }
+  .pin-logo { font-size: 52px; margin-bottom: 8px; filter: drop-shadow(0 0 12px rgba(0,212,255,0.6)); }
+  .pin-title { font-size: 20px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 4px; }
+  .pin-sub { font-size: 13px; color: var(--text2); margin-bottom: 32px; text-align: center; }
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); background: transparent; transition: all 0.15s; }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: var(--glow-cyan); }
+  .pin-dot.error { background: var(--red); border-color: var(--red); }
+  .pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+  .pin-btn { width: 72px; height: 72px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 22px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-family: 'Sarabun', sans-serif; }
+  .pin-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pin-btn:active { background: var(--accent); border-color: var(--accent); color: var(--bg); transform: scale(0.92); box-shadow: var(--glow-cyan); }
+  .pin-btn.del { font-size: 18px; }
+  .pin-btn.empty { background: transparent; border: none; cursor: default; }
+  .pin-error { color: var(--red); font-size: 13px; margin-top: 16px; height: 20px; }
+  .pin-lockout { color: var(--yellow); font-size: 12px; margin-top: 8px; text-align: center; }
+</style>
+<style>
+  /* MODALS */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9000; padding: 24px; }
+  .modal-overlay.hidden { display: none; }
+  .modal-box { background: var(--surface); border: 1px solid rgba(0,212,255,0.2); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 340px; box-shadow: var(--glow-cyan); }
+  .modal-box h3 { margin-bottom: 16px; color: var(--accent2); font-size: 17px; }
+  .modal-input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; font-family: 'Sarabun', sans-serif; letter-spacing: 6px; text-align: center; margin-bottom: 12px; transition: border-color 0.15s; }
+  .modal-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.15); }
+  .modal-actions { display: flex; gap: 8px; }
+  .modal-err { color: var(--red); font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+  .confirm-msg { font-size: 15px; color: var(--text); margin-bottom: 20px; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 8px; }
+  .bottom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: flex-end; justify-content: center; z-index: 9000; }
+  .bottom-overlay.hidden { display: none; }
+  .bottom-sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 480px; border-top: 1px solid rgba(0,212,255,0.2); box-shadow: var(--glow-cyan); }
+  .bottom-sheet h3 { font-size: 17px; margin-bottom: 16px; color: var(--accent2); }
+  #app { display: none; }
+  #app.visible { display: block; }
+  .header { background: rgba(14,20,32,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; flex-direction: column; }
+  .header-title { font-size: 16px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .header-period { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .icon-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: var(--text); font-size: 16px; cursor: pointer; font-family: 'Sarabun', sans-serif; position: relative; transition: all 0.15s; }
+  .icon-btn:hover { border-color: var(--accent); box-shadow: var(--glow-cyan); }
+  .save-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); display: none; box-shadow: 0 0 6px var(--red); }
+  .save-dot.show { display: block; }
+</style>
+<style>
+  /* TABS */
+  .tabs { display: flex; background: rgba(14,20,32,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 1; min-width: 80px; padding: 11px 4px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; font-family: 'Sarabun', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); text-shadow: 0 0 8px rgba(0,212,255,0.5); }
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+  /* DASHBOARD */
+  .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; transition: border-color 0.2s; }
+  .dash-card:hover { border-color: rgba(0,212,255,0.25); }
+  .dash-card.full { grid-column: 1 / -1; }
+  .dash-card.accent-card { background: linear-gradient(135deg, #0a1f3d 0%, #0d2040 40%, #1a0d35 100%); border: 1px solid rgba(0,212,255,0.3); box-shadow: inset 0 1px 0 rgba(0,212,255,0.15), 0 4px 32px rgba(0,212,255,0.12); }
+  .dash-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .dash-value { font-size: 22px; font-weight: 800; color: var(--text); }
+  .dash-value.green { color: var(--green); text-shadow: 0 0 10px rgba(16,245,160,0.4); }
+  .dash-value.red { color: var(--red); text-shadow: 0 0 10px rgba(255,95,126,0.4); }
+  .dash-value.accent { background: linear-gradient(90deg, var(--accent), var(--accent-pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 32px; }
+  .dash-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .ot-bar-wrap { margin-top: 8px; }
+  .ot-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .ot-bar-label { width: 52px; color: var(--text2); flex-shrink: 0; }
+  .ot-bar-track { flex: 1; height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .ot-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .ot-bar-val { width: 44px; text-align: right; color: var(--text); font-weight: 600; }
+  /* MONTH PILLS */
+  .month-pills { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 16px; }
+  .month-pills::-webkit-scrollbar { display: none; }
+  .month-pill { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; font-family: 'Sarabun', sans-serif; transition: all 0.15s; }
+  .month-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .month-pill.active { background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(240,64,160,0.2)); border-color: var(--accent); color: var(--accent2); box-shadow: var(--glow-cyan); }
+  .month-pill.add-month { border-style: dashed; }
+  /* OT TABLE */
+  .period-header { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; border-left: 3px solid var(--accent); }
+  .period-name { font-size: 15px; font-weight: 700; color: var(--accent2); }
+  .period-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .ot-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .ot-table { width: 100%; border-collapse: collapse; background: var(--surface); min-width: 480px; }
+  .ot-table th { background: var(--surface2); color: var(--text2); font-size: 11px; font-weight: 700; padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .ot-table td { padding: 3px 4px; text-align: center; border-bottom: 1px solid rgba(30,45,71,0.8); font-size: 13px; }
+  .ot-table tr.sat-row td { background: rgba(255,212,84,0.06); }
+  .ot-table tr.sun-row td { background: rgba(255,95,126,0.06); }
+  .day-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  .day-badge.sat { background: rgba(255,212,84,0.15); color: var(--yellow); }
+  .day-badge.sun { background: rgba(255,95,126,0.15); color: var(--red); }
+  .day-badge.wd { background: var(--surface2); color: var(--text2); }
+  .ot-table td input[type="number"] { width: 52px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; padding: 5px 2px; text-align: center; font-family: 'Sarabun', sans-serif; -moz-appearance: textfield; appearance: textfield; }
+  .ot-table td input[type="number"]::-webkit-inner-spin-button, .ot-table td input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .ot-table td input[type="number"]:focus { outline: none; border-color: var(--accent); background: rgba(0,212,255,0.05); box-shadow: 0 0 0 2px rgba(0,212,255,0.15); }
+  .ot-table td input[type="number"].has-val { border-color: rgba(0,212,255,0.5); color: var(--accent2); }
+  .sat-bonus-badge { font-size: 10px; background: rgba(255,212,84,0.15); color: var(--yellow); border-radius: 4px; padding: 1px 5px; font-weight: 700; white-space: nowrap; border: 1px solid rgba(255,212,84,0.3); }
+  .ot-table tfoot td { background: var(--surface2); font-weight: 700; font-size: 12px; padding: 7px 4px; color: var(--text); border-top: 1px solid var(--border); }
+</style>
+<style>
+  /* SETTINGS */
+  .settings-section { margin-bottom: 20px; }
+  .settings-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding: 0 4px; }
+  .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .settings-row { display: flex; align-items: center; padding: 13px 14px; border-bottom: 1px solid var(--border); gap: 10px; transition: background 0.15s; }
+  .settings-row:hover { background: var(--surface2); }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-icon { font-size: 18px; width: 28px; flex-shrink: 0; }
+  .settings-row-label { flex: 1; font-size: 14px; }
+  .settings-row-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .settings-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; padding: 8px 10px; font-family: 'Sarabun', sans-serif; text-align: right; -moz-appearance: textfield; appearance: textfield; transition: border-color 0.15s; }
+  .settings-input::-webkit-inner-spin-button, .settings-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .settings-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.15); }
+  .salary-mask { font-size: 18px; font-weight: 700; color: var(--text2); cursor: pointer; letter-spacing: 3px; }
+  .salary-reveal { font-size: 13px; color: var(--accent); cursor: pointer; padding: 4px 10px; border: 1px solid var(--accent); border-radius: 8px; transition: all 0.15s; }
+  .salary-reveal:hover { background: rgba(0,212,255,0.1); box-shadow: var(--glow-cyan); }
+  /* EXPENSES */
+  .expense-edit-row { display: flex; gap: 8px; align-items: center; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; transition: border-color 0.15s; }
+  .expense-edit-row:hover { border-color: rgba(0,212,255,0.2); }
+  .expense-edit-row input[type="text"] { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; padding: 7px 8px; font-family: 'Sarabun', sans-serif; }
+  .expense-edit-row input[type="number"] { width: 90px; text-align: right; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; padding: 7px 8px; font-family: 'Sarabun', sans-serif; -moz-appearance: textfield; appearance: textfield; }
+  .expense-edit-row input[type="number"]::-webkit-inner-spin-button, .expense-edit-row input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .expense-edit-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.12); }
+  /* SHARED */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 18px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Sarabun', sans-serif; transition: all 0.15s; }
+  .btn:active { transform: scale(0.95); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #0098d4); color: var(--bg); box-shadow: 0 4px 16px rgba(0,212,255,0.3); }
+  .btn-primary:hover { box-shadow: 0 4px 24px rgba(0,212,255,0.5); filter: brightness(1.1); }
+  .btn-danger-outline { background: transparent; color: var(--red); border: 1px solid var(--red); }
+  .btn-danger-outline:hover { background: rgba(255,95,126,0.1); }
+  .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 8px; }
+  .btn-full { width: 100%; }
+  .btn-icon-round { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--red); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: 'Sarabun', sans-serif; flex-shrink: 0; transition: all 0.15s; }
+  .btn-icon-round:hover { background: rgba(255,95,126,0.15); border-color: var(--red); }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+  .summary-row-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .summary-row-item:last-child { border-bottom: none; }
+  .summary-row-item.total-row { background: var(--surface2); font-weight: 700; font-size: 15px; }
+  .val-green { color: var(--green); font-weight: 700; text-shadow: 0 0 8px rgba(16,245,160,0.3); }
+  .val-red { color: var(--red); font-weight: 700; }
+  .val-accent { color: var(--accent2); font-weight: 700; }
+  .net-card { background: linear-gradient(135deg, #041228 0%, #071a35 50%, #0d1025 100%); border: 1px solid rgba(0,212,255,0.25); border-radius: 16px; padding: 22px 18px; text-align: center; margin-bottom: 16px; box-shadow: 0 4px 32px rgba(0,212,255,0.1), inset 0 1px 0 rgba(0,212,255,0.1); }
+  .net-label { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+  .net-amount { font-size: 36px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .net-sub { font-size: 12px; margin-top: 4px; }
+  .rate-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .rate-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .rate-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .rate-badge.ot1 { background: rgba(0,212,255,0.15); color: var(--accent2); border: 1px solid rgba(0,212,255,0.3); }
+  .rate-badge.ot15 { background: rgba(255,212,84,0.15); color: var(--yellow); border: 1px solid rgba(255,212,84,0.3); }
+  .rate-badge.ot3 { background: rgba(255,95,126,0.15); color: var(--red); border: 1px solid rgba(255,95,126,0.3); }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid rgba(0,212,255,0.3); color: var(--text); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; z-index: 9999; transition: transform 0.25s; white-space: nowrap; box-shadow: var(--glow-cyan); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+  .form-group input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 15px; padding: 11px 12px; font-family: 'Sarabun', sans-serif; transition: border-color 0.15s; }
+  .form-group input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,212,255,0.12); }
+  /* THEMES */
+  body.theme-purple { --accent:#a855f7; --accent2:#c084fc; --accent-pink:#ec4899; --accent-purple:#818cf8; --green:#10f5a0; --bg:#0d0814; --surface:#130d1e; --surface2:#1c1030; --border:#2d1f4a; --glow-cyan:0 0 18px rgba(168,85,247,0.35); }
+  body.theme-green  { --accent:#10f5a0; --accent2:#34d399; --accent-pink:#f0b040; --accent-purple:#60a5fa; --green:#10f5a0; --bg:#080e10; --surface:#0c1610; --surface2:#0f1f14; --border:#1a3323; --glow-cyan:0 0 18px rgba(16,245,160,0.35); }
+  body.theme-warm   { --accent:#ff9f40; --accent2:#ffbe76; --accent-pink:#ff6b81; --accent-purple:#f7c6a0; --green:#10f5a0; --bg:#100a06; --surface:#1a1008; --surface2:#241610; --border:#3d2510; --glow-cyan:0 0 18px rgba(255,159,64,0.35); }
+  body.light-mode   { --bg:#f0f4ff; --surface:#ffffff; --surface2:#e8eef8; --border:#c8d4e8; --text:#1a2540; --text2:#5a6a8a; --text3:#8090b0; color-scheme:light; }
+  body.light-mode .header { background:rgba(255,255,255,0.92); }
+  body.light-mode .tabs   { background:rgba(255,255,255,0.85); }
+  body.light-mode .ot-table td input[type="number"] { background:#f8faff; }
+  body.light-mode .expense-edit-row input { background:#f8faff; }
+  body.light-mode .settings-input { background:#f8faff; }
+  body.light-mode .modal-input { background:#f8faff; }
+  body.light-mode .form-group input { background:#f8faff; }
+  body.light-mode #pinScreen { background:var(--bg); }
+  /* THEME PICKER */
+  .theme-picker { display:flex; gap:10px; flex-wrap:wrap; }
+  .theme-swatch { width:40px; height:40px; border-radius:50%; border:3px solid transparent; cursor:pointer; transition:all 0.2s; }
+  .theme-swatch.active { border-color: var(--text); box-shadow:0 0 12px rgba(255,255,255,0.3); transform:scale(1.1); }
+  .theme-swatch[data-theme="cyan"]   { background:linear-gradient(135deg,#00d4ff,#f040a0); }
+  .theme-swatch[data-theme="purple"] { background:linear-gradient(135deg,#a855f7,#ec4899); }
+  .theme-swatch[data-theme="green"]  { background:linear-gradient(135deg,#10f5a0,#60a5fa); }
+  .theme-swatch[data-theme="warm"]   { background:linear-gradient(135deg,#ff9f40,#ff6b81); }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:13px 14px; }
+  .toggle-switch { width:48px; height:26px; background:var(--border); border-radius:13px; position:relative; cursor:pointer; transition:background 0.2s; }
+  .toggle-switch.on { background:var(--accent); box-shadow:var(--glow-cyan); }
+  .toggle-thumb { width:20px; height:20px; background:white; border-radius:50%; position:absolute; top:3px; left:3px; transition:transform 0.2s; box-shadow:0 1px 4px rgba(0,0,0,0.3); }
+  .toggle-switch.on .toggle-thumb { transform:translateX(22px); }
+  /* STATS */
+  .stats-hero { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .stats-hero-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
+  .stats-hero-card.wide { grid-column:1/-1; background:linear-gradient(135deg,var(--surface),var(--surface2)); border-color:rgba(0,212,255,0.2); }
+  .stats-hero-val { font-size:26px; font-weight:800; }
+  .stats-hero-label { font-size:11px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-top:3px; }
+  .chart-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .chart-title { font-size:13px; font-weight:700; color:var(--text2); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.5px; }
+  .chart-bars { display:flex; align-items:flex-end; gap:6px; height:120px; }
+  .chart-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
+  .chart-bar-wrap { width:100%; display:flex; align-items:flex-end; height:100px; }
+  .chart-bar { width:100%; border-radius:6px 6px 0 0; min-height:4px; transition:height 0.5s ease; position:relative; cursor:pointer; }
+  .chart-bar-val { font-size:9px; color:var(--text2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .chart-bar-label { font-size:9px; color:var(--text3); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .forecast-card { background:linear-gradient(135deg,#041228,#0d1025); border:1px solid rgba(0,212,255,0.2); border-radius:14px; padding:16px; margin-bottom:14px; }
+  .forecast-title { font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+  .forecast-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .forecast-row:last-child { border-bottom:none; }
+  .forecast-val { font-weight:700; color:var(--accent2); }
+  .forecast-prog-wrap { height:6px; background:var(--border); border-radius:3px; margin-top:10px; overflow:hidden; }
+  .forecast-prog { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--accent),var(--accent-pink)); transition:width 0.5s ease; }
+  /* HOLIDAY */
+  .holiday-badge { font-size:9px; background:rgba(240,64,160,0.2); color:var(--accent-pink); border-radius:4px; padding:1px 4px; font-weight:700; border:1px solid rgba(240,64,160,0.3); white-space:nowrap; }
+  .ot-table tr.holiday-row td { background:rgba(240,64,160,0.05); }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pinScreen">
+  <div class="pin-logo">🔐</div>
+  <div class="pin-title">Omoda-Jecoo OT Tracker</div>
+  <div class="pin-sub" id="pinSubText">ใส่รหัส 4 หลักเพื่อเข้าใช้งาน</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="dot0"></div><div class="pin-dot" id="dot1"></div>
+    <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" id="pb1">1</button><button class="pin-btn" id="pb2">2</button><button class="pin-btn" id="pb3">3</button>
+    <button class="pin-btn" id="pb4">4</button><button class="pin-btn" id="pb5">5</button><button class="pin-btn" id="pb6">6</button>
+    <button class="pin-btn" id="pb7">7</button><button class="pin-btn" id="pb8">8</button><button class="pin-btn" id="pb9">9</button>
+    <button class="pin-btn empty"></button><button class="pin-btn" id="pb0">0</button><button class="pin-btn del" id="pbDel">⌫</button>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <div class="pin-lockout" id="pinLockout"></div>
+</div>
+
+<!-- CHANGE PIN MODAL -->
+<div id="changePinModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>🔑 เปลี่ยนรหัส PIN</h3>
+    <div class="form-group"><label>รหัสเดิม (4 หลัก)</label><input type="password" inputmode="numeric" maxlength="4" id="oldPin" class="modal-input" placeholder="••••"></div>
+    <div class="form-group"><label>รหัสใหม่ (4 หลัก)</label><input type="password" inputmode="numeric" maxlength="4" id="newPin" class="modal-input" placeholder="••••"></div>
+    <div class="form-group"><label>ยืนยันรหัสใหม่</label><input type="password" inputmode="numeric" maxlength="4" id="confirmPin" class="modal-input" placeholder="••••"></div>
+    <div class="modal-err" id="changePinError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-full" id="btnCancelPin">ยกเลิก</button>
+      <button class="btn btn-primary btn-full" id="btnSavePin">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 id="confirmTitle">ยืนยัน</h3>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost btn-full" id="btnConfirmNo">ยกเลิก</button>
+      <button class="btn btn-danger-outline btn-full" id="btnConfirmYes">ลบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MONTH MODAL -->
+<div id="addMonthModal" class="bottom-overlay hidden">
+  <div class="bottom-sheet">
+    <h3>➕ เพิ่มรอบบัญชี</h3>
+    <div class="form-group"><label>ชื่อรอบ</label><input type="text" id="newMonthName" placeholder="เช่น มิ.ย.-ก.ค. 2026"></div>
+    <div class="form-group"><label>วันเริ่มต้น (วันที่ 21)</label><input type="date" id="newMonthStart"></div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-ghost btn-full" id="btnCancelMonth">ยกเลิก</button>
+      <button class="btn btn-primary btn-full" id="btnConfirmMonth">เพิ่มรอบนี้</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">💰 OT Tracker</div>
+      <div class="header-period" id="headerPeriod">—</div>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="btnHeaderPin" title="เปลี่ยน PIN">🔑</button>
+      <button class="icon-btn" id="btnHeaderSave" title="บันทึก">💾<span class="save-dot" id="saveDot"></span></button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="tab-dashboard">📊 ภาพรวม</button>
+    <button class="tab" id="tab-ot">⏱ บันทึก OT</button>
+    <button class="tab" id="tab-income">💵 รายรับ</button>
+    <button class="tab" id="tab-expense">💸 รายจ่าย</button>
+    <button class="tab" id="tab-stats">📈 สถิติ</button>
+    <button class="tab" id="tab-settings">⚙️ ตั้งค่า</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="month-pills" id="monthPills"></div>
+    <div class="dash-grid">
+      <div class="dash-card accent-card full">
+        <div class="dash-label">รายรับรวมเดือนนี้</div>
+        <div class="dash-value accent" id="dashNetIncome">0 ฿</div>
+        <div class="dash-sub">เงินเดือน + OT + โบนัสเสาร์ + เบี้ยรายวัน</div>
+      </div>
+      <div class="dash-card"><div class="dash-label">OT รวม (ชม.)</div><div class="dash-value" id="dashTotalHours">0</div></div>
+      <div class="dash-card"><div class="dash-label">เงิน OT</div><div class="dash-value green" id="dashOTMoney">0 ฿</div></div>
+      <div class="dash-card"><div class="dash-label">โบนัสวันเสาร์</div><div class="dash-value" style="color:var(--yellow)" id="dashSatBonus">0 ฿</div></div>
+      <div class="dash-card"><div class="dash-label">รายจ่ายคงค้าง</div><div class="dash-value red" id="dashUnpaid">0 ฿</div></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div class="section-title" style="margin-bottom:10px;">สัดส่วน OT แต่ละประเภท</div>
+      <div class="ot-bar-wrap">
+        <div class="ot-bar-row"><span class="ot-bar-label">OT × 1</span><div class="ot-bar-track"><div class="ot-bar-fill" id="bar1" style="width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-purple))"></div></div><span class="ot-bar-val" id="barV1">0 ชม.</span></div>
+        <div class="ot-bar-row"><span class="ot-bar-label">OT × 1.5</span><div class="ot-bar-track"><div class="ot-bar-fill" id="bar15" style="width:0%;background:linear-gradient(90deg,var(--yellow),#ff9500)"></div></div><span class="ot-bar-val" id="barV15">0 ชม.</span></div>
+        <div class="ot-bar-row"><span class="ot-bar-label">OT × 3</span><div class="ot-bar-track"><div class="ot-bar-fill" id="bar3" style="width:0%;background:linear-gradient(90deg,var(--accent-pink),var(--red))"></div></div><span class="ot-bar-val" id="barV3">0 ชม.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OT ENTRY -->
+  <div class="page" id="page-ot">
+    <div class="month-pills" id="otMonthPills"></div>
+    <div class="period-header">
+      <div class="period-name" id="otPeriodName">—</div>
+      <div class="period-label" id="otPeriodRange">วัน 21 – 20</div>
+    </div>
+    <div class="ot-table-wrap">
+      <table class="ot-table">
+        <thead>
+          <tr>
+            <th>วันที่</th><th>วัน</th>
+            <th>OT×1<br><span style="color:var(--accent);font-size:10px;">(ชม.)</span></th>
+            <th>OT×1.5<br><span style="color:var(--yellow);font-size:10px;">(ชม.)</span></th>
+            <th>OT×3<br><span style="color:var(--red);font-size:10px;">(ชม.)</span></th>
+            <th>เดินทาง<br><span style="color:var(--green);font-size:10px;">50฿</span></th>
+            <th>อาหาร<br>กลางวัน<br><span style="color:var(--green);font-size:10px;">50฿</span></th>
+            <th>อาหาร<br>OT<br><span style="color:var(--green);font-size:10px;">50฿</span></th>
+            <th>ค่ากะ<br><span style="color:var(--green);font-size:10px;">100฿</span></th>
+          </tr>
+        </thead>
+        <tbody id="otTableBody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="text-align:left;padding-left:8px;">รวม</td>
+            <td id="footOT1">0</td><td id="footOT15">0</td><td id="footOT3">0</td>
+            <td id="footTravel">0</td><td id="footLunch">0</td><td id="footFoodOT">0</td><td id="footShift">0</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="text-align:left;padding-left:8px;color:var(--accent2);">เป็นเงิน</td>
+            <td id="footOT1B" style="color:var(--accent2)">0</td><td id="footOT15B" style="color:var(--accent2)">0</td><td id="footOT3B" style="color:var(--accent2)">0</td>
+            <td id="footTravelB" style="color:var(--green)">0</td><td id="footLunchB" style="color:var(--green)">0</td><td id="footFoodOTB" style="color:var(--green)">0</td><td id="footShiftB" style="color:var(--green)">0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="page" id="page-income">
+    <div class="month-pills" id="incMonthPills"></div>
+    <div class="rate-row" id="rateDisplay"></div>
+    <div class="summary-card">
+      <div class="summary-row-item"><span>เงินเดือนฐาน</span><span class="val-accent" id="incSalary">—</span></div>
+      <div class="summary-row-item"><span>OT × 1</span><span id="incOT1">0 ฿</span></div>
+      <div class="summary-row-item"><span>OT × 1.5</span><span id="incOT15">0 ฿</span></div>
+      <div class="summary-row-item"><span>OT × 3</span><span id="incOT3">0 ฿</span></div>
+      <div class="summary-row-item"><span>โบนัสวันเสาร์ OT <small style="color:var(--text3)">(300/วัน)</small></span><span class="val-green" id="incSatBonus">0 ฿</span></div>
+      <div class="summary-row-item"><span style="color:var(--text2);font-size:12px;font-weight:700;">── เบี้ยรายวัน ──</span><span></span></div>
+      <div class="summary-row-item"><span>ค่าเดินทาง <small style="color:var(--text3)">50฿/วัน</small></span><span id="incTravel">0 ฿</span></div>
+      <div class="summary-row-item"><span>ค่าอาหารกลางวัน <small style="color:var(--text3)">50฿/วัน</small></span><span id="incLunch">0 ฿</span></div>
+      <div class="summary-row-item"><span>ค่าอาหาร OT <small style="color:var(--text3)">50฿/วัน</small></span><span id="incFoodOT">0 ฿</span></div>
+      <div class="summary-row-item"><span>ค่ากะ <small style="color:var(--text3)">100฿/วัน</small></span><span id="incShift">0 ฿</span></div>
+      <div class="summary-row-item"><span>ค่าเช่าบ้าน <small style="color:var(--text3)">1,200฿/เดือน</small></span><span id="incRent">0 ฿</span></div>
+      <div class="summary-row-item">
+        <span>เบี้ยขยัน <small style="color:var(--text3)">1,000฿/เดือน</small></span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span id="incDiligenceAmt">0 ฿</span>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text2);">
+            <input type="checkbox" id="diligenceCheck" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;"> ได้รับ
+          </label>
+        </span>
+      </div>
+      <div class="summary-row-item total-row"><span>รวมรายรับ</span><span class="val-green" id="incTotal">0 ฿</span></div>
+    </div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="page" id="page-expense">
+    <div class="month-pills" id="expMonthPills"></div>
+    <div id="expenseList" style="margin-bottom:12px;"></div>
+    <button class="btn btn-ghost btn-full" id="btnAddExpense" style="margin-bottom:16px;">+ เพิ่มรายจ่าย</button>
+    <div class="summary-card">
+      <div class="summary-row-item"><span>รายจ่ายทั้งหมด</span><span id="expTotal">0 ฿</span></div>
+      <div class="summary-row-item"><span>จ่ายแล้ว ✅</span><span class="val-green" id="expPaid">0 ฿</span></div>
+      <div class="summary-row-item total-row"><span>ค้างจ่าย</span><span class="val-red" id="expUnpaid">0 ฿</span></div>
+    </div>
+    <div class="net-card">
+      <div class="net-label">เงินสุทธิคงเหลือ (รายรับ − รายจ่ายทั้งหมด)</div>
+      <div class="net-amount" id="netFinal">0 ฿</div>
+      <div class="net-sub" id="netStatus">—</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="page" id="page-stats">
+    <div class="stats-hero" id="statsHero"></div>
+    <div class="forecast-card" id="forecastCard"></div>
+    <div class="chart-wrap"><div class="chart-title">รายได้รวมแต่ละรอบ</div><div class="chart-bars" id="chartIncome"></div></div>
+    <div class="chart-wrap"><div class="chart-title">ชั่วโมง OT แต่ละรอบ</div><div class="chart-bars" id="chartOT"></div></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="settings-section">
+      <div class="settings-label">ธีมสี</div>
+      <div class="settings-card" style="padding:14px 14px 10px;">
+        <div class="theme-picker" id="themePicker">
+          <div class="theme-swatch active" data-theme="cyan"></div>
+          <div class="theme-swatch" data-theme="purple"></div>
+          <div class="theme-swatch" data-theme="green"></div>
+          <div class="theme-swatch" data-theme="warm"></div>
+        </div>
+        <div style="margin-top:12px;" class="toggle-row">
+          <span style="font-size:14px;">🌙 Dark / ☀️ Light</span>
+          <div class="toggle-switch" id="lightModeToggle"><div class="toggle-thumb"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">ข้อมูลส่วนตัว</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div class="settings-row-icon">💼</div>
+          <div style="flex:1;"><div class="settings-row-label">เงินเดือนฐาน</div><div class="settings-row-sub">กดตาเพื่อดู/ซ่อน</div></div>
+          <span class="salary-mask" id="salaryMask">••••••</span>
+          <span class="salary-reveal" id="btnToggleSalary">👁</span>
+        </div>
+        <div class="settings-row" id="salaryEditRow" style="display:none;flex-wrap:wrap;gap:8px;">
+          <div class="settings-row-icon">฿</div>
+          <input type="number" class="settings-input" id="salaryInput" value="0" style="width:130px;">
+          <button class="btn btn-primary btn-sm" id="btnHideSalary">ซ่อน</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <!-- FIX #3: label แสดง ÷30 แทน ÷26 -->
+      <div class="settings-label">อัตราค่าจ้าง OT (เงินเดือน ÷ 30 วัน ÷ 8 ชม.)</div>
+      <div class="settings-card">
+        <div class="settings-row"><div class="settings-row-icon">×1</div><div class="settings-row-label">OT ชั่วโมงละ</div><input type="number" class="settings-input" id="rateOT1" value="0" step="0.01" style="width:90px;"></div>
+        <div class="settings-row"><div class="settings-row-icon">×1.5</div><div class="settings-row-label">OT ชั่วโมงละ</div><input type="number" class="settings-input" id="rateOT15" value="0" step="0.01" style="width:90px;"></div>
+        <div class="settings-row"><div class="settings-row-icon">×3</div><div class="settings-row-label">OT ชั่วโมงละ</div><input type="number" class="settings-input" id="rateOT3" value="0" step="0.01" style="width:90px;"></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">ระบบ</div>
+      <div class="settings-card">
+        <div class="settings-row" style="cursor:pointer;" id="btnSettingsPin"><div class="settings-row-icon">🔑</div><div style="flex:1;"><div class="settings-row-label">เปลี่ยนรหัส PIN</div></div><span style="color:var(--text3);">›</span></div>
+        <div class="settings-row" style="cursor:pointer;" id="btnExport"><div class="settings-row-icon">📤</div><div style="flex:1;"><div class="settings-row-label">ส่งออกข้อมูล (JSON)</div></div><span style="color:var(--text3);">›</span></div>
+        <div class="settings-row" style="cursor:pointer;" id="btnImport"><div class="settings-row-icon">📥</div><div style="flex:1;"><div class="settings-row-label">นำเข้าข้อมูล (JSON)</div></div><span style="color:var(--text3);">›</span></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">รอบบัญชี</div>
+      <div class="settings-card" id="monthManageList"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="btnSaveSettings" style="margin-bottom:16px;">💾 บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const STORAGE_KEY     = 'omoda_ot_v3';
+const SAT_BONUS       = 300;
+const RENT_AMT        = 1200;
+const DILIGENCE_AMT   = 1000;
+const TRAVEL_RATE     = 50;
+const LUNCH_RATE      = 50;
+const FOOD_OT_RATE    = 50;
+const SHIFT_RATE      = 100;
+const MAX_OT_HOURS    = 16;
+// FIX #3: ใช้ 30 วัน/เดือน ตามกฎหมายแรงงานไทย (เดิมใช้ 26)
+const OT_WORKING_DAYS = 30;
+const OT_HOURS_PER_DAY = 8;
+const TH_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const DAYS_SHORT = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+// ═══════════════════════════════════════════════════════════
+//  FIX #1: SHA-256 PIN HASHING (ไม่เก็บ PIN เป็น plaintext อีกต่อไป)
+// ═══════════════════════════════════════════════════════════
+async function hashPin(pin) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'omoda_salt_v3');
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+async function verifyPin(inputPin, storedHash) {
+  return (await hashPin(inputPin)) === storedHash;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let state = {
+  pinHash: '',   // FIX #1: hash แทน plaintext
+  salary: 0,
+  salaryHidden: true,
+  rateOT1: 0, rateOT15: 0, rateOT3: 0,
+  currentMonth: 0,
+  months: [],
+  theme: 'cyan',
+  lightMode: false
+};
+let _dirty = false;
+
+// ═══════════════════════════════════════════════════════════
+//  PERSIST
+// ═══════════════════════════════════════════════════════════
+async function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // FIX #1: migration — ถ้าข้อมูลเก่ายังมี pin plaintext ให้แปลงเป็น hash
+      if (parsed.pin && !parsed.pinHash) {
+        parsed.pinHash = await hashPin(parsed.pin);
+        delete parsed.pin;
+      }
+      Object.assign(state, parsed);
+    }
+  } catch(e) {}
+  // ใช้ครั้งแรก ตั้ง default PIN = 1234
+  if (!state.pinHash) state.pinHash = await hashPin('1234');
+  if (!state.months || state.months.length === 0) {
+    const now = new Date();
+    const sd  = new Date(now.getFullYear(), now.getMonth(), 21);
+    state.months = [createMonth(
+      `${TH_MONTHS[now.getMonth()]}-${TH_MONTHS[(now.getMonth()+1)%12]} ${now.getFullYear()}`,
+      sd.toISOString().split('T')[0]
+    )];
+    state.currentMonth = 0;
+  }
+}
+
+function markDirty() {
+  _dirty = true;
+  document.getElementById('saveDot').classList.add('show');
+}
+
+function saveAll(silent) {
+  const s = parseFloat(document.getElementById('salaryInput').value);
+  if (!isNaN(s) && s >= 0) state.salary = s;
+  state.rateOT1  = parseFloat(document.getElementById('rateOT1').value)  || state.rateOT1;
+  state.rateOT15 = parseFloat(document.getElementById('rateOT15').value) || state.rateOT15;
+  state.rateOT3  = parseFloat(document.getElementById('rateOT3').value)  || state.rateOT3;
+  state.salaryHidden = true;
+  document.getElementById('salaryEditRow').style.display = 'none';
+  document.getElementById('salaryMask').textContent = '••••••';
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  _dirty = false;
+  document.getElementById('saveDot').classList.remove('show');
+  if (!silent) showToast('💾 บันทึกเรียบร้อย');
+}
+function autoSave() { saveAll(true); }
+
+// ═══════════════════════════════════════════════════════════
+//  FIX #1: PIN — async SHA-256 + brute-force lockout
+// ═══════════════════════════════════════════════════════════
+let pinInput = '', pinFails = 0, lockUntil = 0;
+const MAX_FAILS = 5, LOCK_SECS = 30;
+let lockTimer = null;
+
+function setupPinButtons() {
+  for (let i = 0; i <= 9; i++)
+    document.getElementById('pb'+i).addEventListener('click', () => pinPress(String(i)));
+  document.getElementById('pbDel').addEventListener('click', pinDel);
+}
+
+function pinPress(d) {
+  if (Date.now() < lockUntil || pinInput.length >= 4) return;
+  pinInput += d;
+  updatePinDots(false);
+  if (pinInput.length === 4) setTimeout(checkPin, 120);
+}
+function pinDel() { pinInput = pinInput.slice(0,-1); updatePinDots(false); }
+
+function updatePinDots(isError) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot'+i);
+    dot.classList.toggle('filled', !isError && i < pinInput.length);
+    dot.classList.toggle('error',  isError);
+  }
+}
+
+async function checkPin() {
+  const ok = await verifyPin(pinInput, state.pinHash);
+  if (ok) {
+    pinFails = 0;
+    document.getElementById('pinScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    renderAll();
+  } else {
+    pinFails++;
+    updatePinDots(true);
+    pinInput = '';
+    if (pinFails >= MAX_FAILS) {
+      lockUntil = Date.now() + LOCK_SECS * 1000;
+      startLockTimer();
+      document.getElementById('pinError').textContent = '';
+      document.getElementById('pinSubText').textContent = 'ระบบล็อกชั่วคราว';
+    } else {
+      document.getElementById('pinError').textContent = `❌ รหัสไม่ถูกต้อง (${pinFails}/${MAX_FAILS})`;
+      setTimeout(() => { document.getElementById('pinError').textContent = ''; updatePinDots(false); }, 1000);
+    }
+  }
+}
+
+function startLockTimer() {
+  clearInterval(lockTimer);
+  lockTimer = setInterval(() => {
+    const rem = Math.ceil((lockUntil - Date.now()) / 1000);
+    if (rem <= 0) {
+      clearInterval(lockTimer); pinFails = 0;
+      document.getElementById('pinLockout').textContent = '';
+      document.getElementById('pinSubText').textContent = 'ใส่รหัส 4 หลักเพื่อเข้าใช้งาน';
+      updatePinDots(false);
+    } else {
+      document.getElementById('pinLockout').textContent = `🔒 ล็อก ${rem} วินาที`;
+    }
+  }, 500);
+}
+
+function showChangePinModal() {
+  ['oldPin','newPin','confirmPin'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('changePinError').textContent = '';
+  document.getElementById('changePinModal').classList.remove('hidden');
+}
+function closeChangePinModal() { document.getElementById('changePinModal').classList.add('hidden'); }
+
+async function doChangePin() {
+  const old = document.getElementById('oldPin').value;
+  const np  = document.getElementById('newPin').value;
+  const cp  = document.getElementById('confirmPin').value;
+  const err = document.getElementById('changePinError');
+  if (!(await verifyPin(old, state.pinHash))) { err.textContent = '❌ รหัสเดิมไม่ถูกต้อง'; return; }
+  if (!/^\d{4}$/.test(np)) { err.textContent = '❌ รหัสใหม่ต้องเป็นตัวเลข 4 หลัก'; return; }
+  if (np !== cp)            { err.textContent = '❌ ยืนยันรหัสไม่ตรงกัน'; return; }
+  state.pinHash = await hashPin(np);
+  saveAll(true);
+  closeChangePinModal();
+  showToast('✅ เปลี่ยนรหัส PIN แล้ว');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MONTH MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+function createMonth(name, startDateStr) {
+  const start = new Date(startDateStr);
+  const days = [];
+  for (let i = 0; i < 31; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    days.push({ date: d.toISOString().split('T')[0], dow: d.getDay(),
+                ot1: '', ot15: '', ot3: '', travel: false, lunch: false, foodOT: false, shift: false });
+  }
+  return { id: Date.now()+Math.random(), name, startDate: startDateStr, days, expenses: [], diligence: false };
+}
+
+function switchMonth(idx) { state.currentMonth = idx; renderAll(); }
+
+function openAddMonth() {
+  const last = state.months[state.months.length-1];
+  const ns = new Date(last.startDate); ns.setMonth(ns.getMonth()+1);
+  const nm = new Date(ns);            nm.setMonth(nm.getMonth()+1);
+  document.getElementById('newMonthStart').value = ns.toISOString().split('T')[0];
+  document.getElementById('newMonthName').value  = `${TH_MONTHS[ns.getMonth()]}-${TH_MONTHS[nm.getMonth()%12]} ${ns.getFullYear()}`;
+  document.getElementById('addMonthModal').classList.remove('hidden');
+}
+function closeAddMonth() { document.getElementById('addMonthModal').classList.add('hidden'); }
+function confirmAddMonth() {
+  const name = document.getElementById('newMonthName').value.trim();
+  const start = document.getElementById('newMonthStart').value;
+  if (!name || !start) { showToast('⚠️ กรุณากรอกข้อมูลให้ครบ'); return; }
+  state.months.push(createMonth(name, start));
+  state.currentMonth = state.months.length - 1;
+  closeAddMonth(); saveAll(true); renderAll();
+  showToast('✅ เพิ่มรอบบัญชีแล้ว');
+}
+function deleteMonth(i) {
+  if (state.months.length <= 1) { showToast('⚠️ ต้องมีอย่างน้อย 1 รอบ'); return; }
+  showConfirm('ลบรอบบัญชี', `ลบรอบ "${state.months[i].name}" ?\nข้อมูล OT และรายจ่ายในรอบนี้จะหายทั้งหมด`, () => {
+    state.months.splice(i, 1);
+    if (state.currentMonth >= state.months.length) state.currentMonth = state.months.length-1;
+    saveAll(true); renderAll(); showToast('🗑 ลบรอบบัญชีแล้ว');
+  });
+}
+
+let _confirmCallback = null;
+function showConfirm(title, msg, onYes) {
+  _confirmCallback = onYes;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent   = msg;
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); _confirmCallback = null; }
+
+// ═══════════════════════════════════════════════════════════
+//  CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+function getMonthCalc(mIdx) {
+  const m = state.months[mIdx];
+  let sumOT1=0, sumOT15=0, sumOT3=0, satDaysOT=0;
+  let cntTravel=0, cntLunch=0, cntFoodOT=0, cntShift=0;
+  m.days.forEach(d => {
+    const o1  = Math.min(parseFloat(d.ot1)  || 0, MAX_OT_HOURS);
+    const o15 = Math.min(parseFloat(d.ot15) || 0, MAX_OT_HOURS);
+    const o3  = Math.min(parseFloat(d.ot3)  || 0, MAX_OT_HOURS);
+    sumOT1+=o1; sumOT15+=o15; sumOT3+=o3;
+    if (d.travel) cntTravel++; if (d.lunch) cntLunch++;
+    if (d.foodOT) cntFoodOT++; if (d.shift) cntShift++;
+    if (d.dow===6 && (o1+o15+o3)>0) satDaysOT++;
+  });
+  const mOT1=sumOT1*state.rateOT1, mOT15=sumOT15*state.rateOT15, mOT3=sumOT3*state.rateOT3;
+  const satBonus=satDaysOT*SAT_BONUS, totalOT=mOT1+mOT15+mOT3;
+  const sumTravel=cntTravel*TRAVEL_RATE, sumLunch=cntLunch*LUNCH_RATE;
+  const sumFoodOT=cntFoodOT*FOOD_OT_RATE, sumShift=cntShift*SHIFT_RATE;
+  const sumRent=RENT_AMT, sumDiligence=m.diligence?DILIGENCE_AMT:0;
+  const totalAllowance=sumTravel+sumLunch+sumFoodOT+sumShift+sumRent+sumDiligence;
+  const totalIncome=state.salary+totalOT+satBonus+totalAllowance;
+  let expTotal=0, expPaid=0;
+  m.expenses.forEach(e=>{ expTotal+=(e.amount||0); if(e.paid) expPaid+=(e.amount||0); });
+  return { sumOT1,sumOT15,sumOT3,cntTravel,cntLunch,cntFoodOT,cntShift,
+           sumTravel,sumLunch,sumFoodOT,sumShift,sumRent,sumDiligence,
+           satDaysOT,mOT1,mOT15,mOT3,satBonus,totalOT,totalAllowance,totalIncome,
+           expTotal,expPaid,expUnpaid:expTotal-expPaid,netBalance:totalIncome-expTotal };
+}
+
+// FIX #3: ÷30 วัน ÷8 ชม. ตามกฎหมายแรงงานไทย
+// อัปเดต rate อัตโนมัติเฉพาะเมื่อ rate ยังไม่ได้ถูกแก้ด้วยตัวเอง
+function updateSalaryRates() {
+  const s = parseFloat(document.getElementById('salaryInput').value) || 0;
+  state.salary = s;
+  const h = s / OT_WORKING_DAYS / OT_HOURS_PER_DAY;
+  state.rateOT1=h; state.rateOT15=h*1.5; state.rateOT3=h*3;
+  document.getElementById('rateOT1').value  = h.toFixed(2);
+  document.getElementById('rateOT15').value = (h*1.5).toFixed(2);
+  document.getElementById('rateOT3').value  = (h*3).toFixed(2);
+  markDirty(); renderSummaries();
+}
+
+function toggleSalary() {
+  state.salaryHidden = !state.salaryHidden;
+  if (!state.salaryHidden) {
+    document.getElementById('salaryEditRow').style.display = 'flex';
+    document.getElementById('salaryMask').textContent = fmt(state.salary)+' ฿';
+  } else {
+    document.getElementById('salaryEditRow').style.display = 'none';
+    document.getElementById('salaryMask').textContent = '••••••';
+  }
+  renderSummaries();
+}
+function hideSalaryRow() {
+  state.salaryHidden = true;
+  document.getElementById('salaryEditRow').style.display = 'none';
+  document.getElementById('salaryMask').textContent = '••••••';
+  updateSalaryRates();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SETUP OT TABLE LISTENER — ผูกกับ wrapper ที่ไม่ถูก re-create
+// ═══════════════════════════════════════════════════════════
+function setupOTTableListener() {
+  // ผูกกับ .ot-table-wrap ซึ่งอยู่ใน HTML static ไม่ถูก re-render
+  document.querySelector('.ot-table-wrap').addEventListener('change', onOTTableChange);
+}
+function fmt(n) { return Math.round(n).toLocaleString('th-TH'); }
+
+function renderAll() {
+  renderMonthPills(); renderOTTable(); renderSummaries();
+  renderExpenses(); renderSettings(); renderStats();
+  applyHolidayHighlight();
+}
+
+function renderMonthPills() {
+  ['monthPills','otMonthPills','incMonthPills','expMonthPills'].forEach(id => {
+    const wrap = document.getElementById(id); if (!wrap) return;
+    wrap.innerHTML = '';
+    state.months.forEach((m,i) => {
+      const btn = document.createElement('button');
+      btn.className = 'month-pill'+(i===state.currentMonth?' active':'');
+      btn.textContent = m.name;
+      btn.addEventListener('click', () => switchMonth(i));
+      wrap.appendChild(btn);
+    });
+    const add = document.createElement('button');
+    add.className = 'month-pill add-month'; add.textContent = '+ เพิ่มรอบ';
+    add.addEventListener('click', openAddMonth); wrap.appendChild(add);
+  });
+  const m = state.months[state.currentMonth];
+  document.getElementById('headerPeriod').textContent = m ? m.name : '—';
+}
+
+function renderOTTable() {
+  const m    = state.months[state.currentMonth];
+  const body = document.getElementById('otTableBody');
+  body.innerHTML = '';
+  document.getElementById('otPeriodName').textContent = m.name;
+  const s = new Date(m.startDate), e = new Date(s); e.setDate(s.getDate()+30);
+  document.getElementById('otPeriodRange').textContent =
+    `${s.getDate()} ${TH_MONTHS[s.getMonth()]} – ${e.getDate()} ${TH_MONTHS[e.getMonth()]}`;
+
+  const mi = state.currentMonth;
+  m.days.forEach((d,i) => {
+    const dt=new Date(d.date), dow=dt.getDay(), isSat=dow===6, isSun=dow===0;
+    const tr=document.createElement('tr');
+    if (isSat) tr.className='sat-row'; if (isSun) tr.className='sun-row';
+    const bCls = isSat?'sat':isSun?'sun':'wd';
+    const hasOT = (parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
+    const satBadge = isSat&&hasOT?`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`:'';
+    const cbHtml = ['travel','lunch','foodOT','shift'].map(f=>`
+      <td style="padding:2px;"><label style="display:flex;align-items:center;justify-content:center;cursor:pointer;width:100%;height:32px;">
+        <input type="checkbox" ${d[f]?'checked':''} style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;"
+          data-mi="${mi}" data-di="${i}" data-field="${f}">
+      </label></td>`).join('');
+    tr.innerHTML = `
+      <td><strong>${dt.getDate()}</strong>${satBadge}</td>
+      <td><span class="day-badge ${bCls}">${DAYS_SHORT[dow]}</span></td>
+      <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot1}" class="${d.ot1?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot1"></td>
+      <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot15}" class="${d.ot15?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot15"></td>
+      <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot3}" class="${d.ot3?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot3"></td>
+      ${cbHtml}`;
+    body.appendChild(tr);
+  });
+  // listener ผูกไว้ที่ wrapper ซึ่งไม่ถูก re-create (ดู setupOTTableListener)
+  updateFootTotals();
+  setTimeout(applyHolidayHighlight, 0);
+}
+
+function onOTTableChange(e) {
+  const el=e.target, mi=parseInt(el.dataset.mi), di=parseInt(el.dataset.di), field=el.dataset.field;
+  if (isNaN(mi)||isNaN(di)||!field) return;
+  if (el.type==='checkbox') {
+    state.months[mi].days[di][field]=el.checked;
+  } else {
+    let val=parseFloat(el.value);
+    if (isNaN(val)||val<0) val='';
+    else if (val>MAX_OT_HOURS) { val=MAX_OT_HOURS; el.value=val; }
+    state.months[mi].days[di][field]=val===''?'':val;
+    el.classList.toggle('has-val', val!==''&&val>0);
+    if (field.startsWith('ot')) updateSatBadge(mi,di);
+  }
+  updateFootTotals(); renderSummaries(); autoSave();
+}
+
+function updateSatBadge(mi,di) {
+  const d=state.months[mi].days[di];
+  const hasOT=(parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
+  const rows=document.getElementById('otTableBody').querySelectorAll('tr');
+  if (!rows[di]) return;
+  const cell=rows[di].querySelector('td:first-child');
+  const dt=new Date(d.date), isSat=dt.getDay()===6;
+  if (!isSat) return;
+  // build cell content cleanly — ไม่ใช้ innerHTML+= เพื่อป้องกัน holiday badge หาย
+  const isHoliday=TH_HOLIDAYS.has(d.date);
+  let html=`<strong>${dt.getDate()}</strong>`;
+  if (hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
+  if (isHoliday) html+=`<br><span class="holiday-badge">${TH_HOLIDAY_NAMES[d.date]||'หยุด'}</span>`;
+  cell.innerHTML=html;
+}
+
+function updateFootTotals() {
+  const c=getMonthCalc(state.currentMonth);
+  const fh=v=>parseFloat(v.toFixed(2));
+  document.getElementById('footOT1').textContent   = fh(c.sumOT1);
+  document.getElementById('footOT15').textContent  = fh(c.sumOT15);
+  document.getElementById('footOT3').textContent   = fh(c.sumOT3);
+  document.getElementById('footTravel').textContent  = c.cntTravel;
+  document.getElementById('footLunch').textContent   = c.cntLunch;
+  document.getElementById('footFoodOT').textContent  = c.cntFoodOT;
+  document.getElementById('footShift').textContent   = c.cntShift;
+  document.getElementById('footOT1B').textContent   = fmt(c.mOT1);
+  document.getElementById('footOT15B').textContent  = fmt(c.mOT15);
+  document.getElementById('footOT3B').textContent   = fmt(c.mOT3);
+  document.getElementById('footTravelB').textContent  = fmt(c.sumTravel);
+  document.getElementById('footLunchB').textContent   = fmt(c.sumLunch);
+  document.getElementById('footFoodOTB').textContent  = fmt(c.sumFoodOT);
+  document.getElementById('footShiftB').textContent   = fmt(c.sumShift);
+}
+
+function renderSummaries() {
+  const c=getMonthCalc(state.currentMonth);
+  document.getElementById('dashNetIncome').textContent  = fmt(c.totalIncome)+' ฿';
+  document.getElementById('dashTotalHours').textContent = (c.sumOT1+c.sumOT15+c.sumOT3).toFixed(1)+' ชม.';
+  document.getElementById('dashOTMoney').textContent    = fmt(c.totalOT)+' ฿';
+  document.getElementById('dashSatBonus').textContent   = fmt(c.satBonus)+' ฿';
+  document.getElementById('dashUnpaid').textContent     = fmt(c.expUnpaid)+' ฿';
+  const totalH=c.sumOT1+c.sumOT15+c.sumOT3, maxH=Math.max(totalH,0.01);
+  document.getElementById('bar1').style.width  = (c.sumOT1/maxH*100)+'%';
+  document.getElementById('bar15').style.width = (c.sumOT15/maxH*100)+'%';
+  document.getElementById('bar3').style.width  = (c.sumOT3/maxH*100)+'%';
+  document.getElementById('barV1').textContent  = c.sumOT1.toFixed(1)+' ชม.';
+  document.getElementById('barV15').textContent = c.sumOT15.toFixed(1)+' ชม.';
+  document.getElementById('barV3').textContent  = c.sumOT3.toFixed(1)+' ชม.';
+  document.getElementById('incSalary').textContent = state.salaryHidden ? '••••••' : fmt(state.salary)+' ฿';
+  document.getElementById('incOT1').textContent    = fmt(c.mOT1)+' ฿';
+  document.getElementById('incOT15').textContent   = fmt(c.mOT15)+' ฿';
+  document.getElementById('incOT3').textContent    = fmt(c.mOT3)+' ฿';
+  document.getElementById('incSatBonus').textContent = fmt(c.satBonus)+' ฿'+(c.satDaysOT>0?` (${c.satDaysOT} วัน)`:'');
+  document.getElementById('incTravel').textContent = fmt(c.sumTravel)+' ฿'+(c.cntTravel>0?` (${c.cntTravel} วัน)`:'');
+  document.getElementById('incLunch').textContent  = fmt(c.sumLunch)+' ฿'+(c.cntLunch>0?` (${c.cntLunch} วัน)`:'');
+  document.getElementById('incFoodOT').textContent = fmt(c.sumFoodOT)+' ฿'+(c.cntFoodOT>0?` (${c.cntFoodOT} วัน)`:'');
+  document.getElementById('incShift').textContent  = fmt(c.sumShift)+' ฿'+(c.cntShift>0?` (${c.cntShift} วัน)`:'');
+  document.getElementById('incRent').textContent   = fmt(c.sumRent)+' ฿';
+  document.getElementById('incDiligenceAmt').textContent = fmt(c.sumDiligence)+' ฿';
+  const chk=document.getElementById('diligenceCheck');
+  if (chk) chk.checked=state.months[state.currentMonth].diligence||false;
+  document.getElementById('incTotal').textContent  = fmt(c.totalIncome)+' ฿';
+  document.getElementById('rateDisplay').innerHTML = `
+    <div class="rate-item"><span class="rate-badge ot1">OT × 1</span><span>${state.rateOT1.toFixed(2)} ฿/ชม.</span></div>
+    <div class="rate-item"><span class="rate-badge ot15">OT × 1.5</span><span>${state.rateOT15.toFixed(2)} ฿/ชม.</span></div>
+    <div class="rate-item"><span class="rate-badge ot3">OT × 3</span><span>${state.rateOT3.toFixed(2)} ฿/ชม.</span></div>`;
+  document.getElementById('expTotal').textContent  = fmt(c.expTotal)+' ฿';
+  document.getElementById('expPaid').textContent   = fmt(c.expPaid)+' ฿';
+  document.getElementById('expUnpaid').textContent = fmt(c.expUnpaid)+' ฿';
+  const net=c.netBalance, el=document.getElementById('netFinal');
+  el.textContent=fmt(net)+' ฿'; el.style.color=net>=0?'':'#ff5f7e';
+  document.getElementById('netStatus').textContent = net>=0?'✅ ยังมีเงินเหลือ':'⚠️ รายจ่ายเกินรายรับ';
+  document.getElementById('netStatus').style.color = net>=0?'rgba(255,255,255,0.8)':'#fca5a5';
+}
+
+function renderExpenses() {
+  const m=state.months[state.currentMonth], wrap=document.getElementById('expenseList');
+  wrap.innerHTML='';
+  m.expenses.forEach((e,i)=>{
+    const div=document.createElement('div'); div.className='expense-edit-row';
+    const ps=e.paid?'background:rgba(34,197,94,0.2);border:1px solid var(--green);color:var(--green);':'background:var(--surface2);border:1px solid var(--border);color:var(--text2);';
+    div.innerHTML=`
+      <input type="text" value="${e.name}" placeholder="รายการ" data-idx="${i}" data-field="name">
+      <input type="number" value="${e.amount}" placeholder="0" inputmode="numeric" data-idx="${i}" data-field="amount" style="width:85px;text-align:right;">
+      <button class="btn btn-sm" style="padding:8px 10px;border-radius:8px;white-space:nowrap;${ps}" data-paid="${i}">${e.paid?'✅':'○'}</button>
+      <button class="btn-icon-round" data-del="${i}">✕</button>`;
+    wrap.appendChild(div);
+  });
+}
+
+function renderSettings() {
+  document.getElementById('salaryInput').value=state.salary;
+  document.getElementById('rateOT1').value=state.rateOT1.toFixed(2);
+  document.getElementById('rateOT15').value=state.rateOT15.toFixed(2);
+  document.getElementById('rateOT3').value=state.rateOT3.toFixed(2);
+  const wrap=document.getElementById('monthManageList'); wrap.innerHTML='';
+  state.months.forEach((m,i)=>{
+    const row=document.createElement('div'); row.className='settings-row';
+    row.innerHTML=`<div class="settings-row-icon">${i===state.currentMonth?'📍':'📅'}</div>
+      <div style="flex:1;"><div class="settings-row-label">${m.name}</div></div>
+      ${state.months.length>1?`<button class="btn btn-sm btn-danger-outline" data-delmonth="${i}">ลบ</button>`:''}`;
+    wrap.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPENSE EVENTS (delegated)
+// ═══════════════════════════════════════════════════════════
+document.getElementById('expenseList').addEventListener('change', e=>{
+  const el=e.target, idx=parseInt(el.dataset.idx), field=el.dataset.field;
+  if (isNaN(idx)||!field) return;
+  const m=state.months[state.currentMonth];
+  if (field==='amount') m.expenses[idx].amount=parseFloat(el.value)||0;
+  else m.expenses[idx][field]=el.value;
+  renderSummaries(); autoSave();
+});
+document.getElementById('expenseList').addEventListener('click', e=>{
+  const paid=e.target.closest('[data-paid]'), del=e.target.closest('[data-del]');
+  const m=state.months[state.currentMonth];
+  if (paid) { const i=parseInt(paid.dataset.paid); m.expenses[i].paid=!m.expenses[i].paid; renderExpenses(); renderSummaries(); autoSave(); }
+  else if (del) { const i=parseInt(del.dataset.del); m.expenses.splice(i,1); renderExpenses(); renderSummaries(); autoSave(); }
+});
+document.getElementById('btnAddExpense').addEventListener('click', ()=>{
+  state.months[state.currentMonth].expenses.push({name:'รายการใหม่',amount:0,paid:false});
+  renderExpenses(); renderSummaries(); autoSave();
+});
+document.getElementById('diligenceCheck').addEventListener('change', function(){
+  state.months[state.currentMonth].diligence=this.checked; renderSummaries(); autoSave();
+});
+
+// TABS
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+}
+['dashboard','ot','income','expense','stats','settings'].forEach(name=>{
+  document.getElementById('tab-'+name).addEventListener('click',()=>switchTab(name));
+});
+document.getElementById('monthManageList').addEventListener('click', e=>{
+  const btn=e.target.closest('[data-delmonth]');
+  if (btn) deleteMonth(parseInt(btn.dataset.delmonth));
+});
+document.getElementById('salaryInput').addEventListener('input', ()=>{
+  const s = parseFloat(document.getElementById('salaryInput').value) || 0;
+  const h = s / OT_WORKING_DAYS / OT_HOURS_PER_DAY;
+  // ตรวจว่า rate ถูกแก้เองจากค่าที่คำนวณหรือไม่
+  const curR1 = parseFloat(document.getElementById('rateOT1').value) || 0;
+  const autoR1 = state.salary > 0 ? state.salary / OT_WORKING_DAYS / OT_HOURS_PER_DAY : 0;
+  const rateWasCustomized = Math.abs(curR1 - autoR1) > 0.01 && state.salary > 0;
+  if (rateWasCustomized) {
+    // ถ้า rate ถูกแก้เองไว้แล้ว ให้อัปเดต salary อย่างเดียว ไม่แตะ rate
+    state.salary = s;
+    markDirty(); renderSummaries();
+  } else {
+    updateSalaryRates();
+  }
+});
+['rateOT1','rateOT15','rateOT3'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ()=>{ markDirty(); renderSummaries(); });
+});
+document.getElementById('btnHeaderPin').addEventListener('click', showChangePinModal);
+document.getElementById('btnHeaderSave').addEventListener('click', ()=>saveAll(false));
+document.getElementById('btnSettingsPin').addEventListener('click', showChangePinModal);
+document.getElementById('btnSaveSettings').addEventListener('click', ()=>saveAll(false));
+document.getElementById('btnToggleSalary').addEventListener('click', toggleSalary);
+document.getElementById('btnHideSalary').addEventListener('click', hideSalaryRow);
+document.getElementById('btnCancelPin').addEventListener('click', closeChangePinModal);
+document.getElementById('btnSavePin').addEventListener('click', doChangePin);
+document.getElementById('btnCancelMonth').addEventListener('click', closeAddMonth);
+document.getElementById('btnConfirmMonth').addEventListener('click', confirmAddMonth);
+document.getElementById('btnConfirmNo').addEventListener('click', closeConfirm);
+document.getElementById('btnConfirmYes').addEventListener('click', ()=>{
+  const cb = _confirmCallback;   // เก็บ callback ก่อน closeConfirm จะ null มัน
+  closeConfirm();
+  if (cb) cb();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  FIX #4: EXPORT / IMPORT — strict schema validation
+// ═══════════════════════════════════════════════════════════
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='ot_tracker_backup.json'; a.click(); showToast('📤 ส่งออกข้อมูลแล้ว');
+});
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  const input=document.createElement('input'); input.type='file'; input.accept='.json';
+  input.addEventListener('change', e=>{
+    const file=e.target.files[0]; if (!file) return;
+    const reader=new FileReader();
+    reader.addEventListener('load', async ev=>{
+      try {
+        const data=JSON.parse(ev.target.result);
+        // FIX #4: validate schema อย่างละเอียด
+        if (!data||typeof data!=='object') throw new Error('ไฟล์ไม่ใช่ object');
+        if (!Array.isArray(data.months)||data.months.length===0) throw new Error('ไม่มีข้อมูลรอบบัญชี');
+        if (!data.pinHash && !data.pin) throw new Error('ไม่มีข้อมูล PIN');
+        if (typeof data.salary!=='number') throw new Error('ข้อมูลเงินเดือนไม่ถูกต้อง');
+        for (const m of data.months) {
+          if (typeof m.name!=='string') throw new Error('ชื่อรอบบัญชีไม่ถูกต้อง');
+          if (typeof m.startDate!=='string') throw new Error('วันเริ่มต้นไม่ถูกต้อง');
+          if (!Array.isArray(m.days)) throw new Error('ข้อมูลวันไม่ถูกต้อง');
+          if (!Array.isArray(m.expenses)) throw new Error('ข้อมูลรายจ่ายไม่ถูกต้อง');
+          for (const d of m.days) if (typeof d.date!=='string') throw new Error('วันที่ไม่ถูกต้อง');
+          for (const ex of m.expenses) if (typeof ex.amount!=='number') throw new Error('จำนวนเงินไม่ถูกต้อง');
+        }
+        // migration: pin plaintext → hash
+        if (data.pin && !data.pinHash) { data.pinHash=await hashPin(data.pin); delete data.pin; }
+        Object.assign(state, data); saveAll(true); renderAll();
+        showToast('📥 นำเข้าข้อมูลสำเร็จ');
+      } catch(err) { showToast('❌ ไฟล์ไม่ถูกต้อง: '+(err.message||'unknown')); }
+    });
+    reader.readAsText(file);
+  });
+  input.click();
+});
+
+// TOAST
+let toastTimer;
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FIX #5: THAI PUBLIC HOLIDAYS — เพิ่มชื่อครบทุกวัน
+// ═══════════════════════════════════════════════════════════
+const TH_HOLIDAYS = new Set([
+  '2025-01-01','2025-02-03','2025-04-06','2025-04-07','2025-04-13','2025-04-14','2025-04-15',
+  '2025-05-01','2025-05-05','2025-05-12','2025-06-02','2025-06-03','2025-07-11',
+  '2025-08-12','2025-10-13','2025-10-23','2025-12-05','2025-12-10','2025-12-31',
+  '2026-01-01','2026-02-23','2026-04-06','2026-04-13','2026-04-14','2026-04-15',
+  '2026-05-01','2026-05-04','2026-06-01','2026-07-29',
+  '2026-08-12','2026-10-13','2026-10-23','2026-12-05','2026-12-10','2026-12-31',
+]);
+const TH_HOLIDAY_NAMES = {
+  // 2025
+  '2025-01-01':'วันขึ้นปีใหม่',   '2025-02-03':'ชดเชยมาฆบูชา',
+  '2025-04-06':'วันจักรี',         '2025-04-07':'ชดเชยจักรี',          // FIX #5: เพิ่ม
+  '2025-04-13':'สงกรานต์',         '2025-04-14':'สงกรานต์',
+  '2025-04-15':'สงกรานต์',         '2025-05-01':'วันแรงงาน',
+  '2025-05-05':'วันฉัตรมงคล',      '2025-05-12':'วันวิสาขบูชา',
+  '2025-06-02':'วันเฉลิมฯ ร.10',   '2025-06-03':'ชดเชยเฉลิมฯ',        // FIX #5: เพิ่ม
+  '2025-07-11':'วันอาสาฬหบูชา',    '2025-08-12':'วันแม่แห่งชาติ',
+  '2025-10-13':'วันนวมินทรมหาราช', '2025-10-23':'วันจุฬาลงกรณ์',
+  '2025-12-05':'วันพ่อแห่งชาติ',   '2025-12-10':'วันรัฐธรรมนูญ',
+  '2025-12-31':'วันสิ้นปี',
+  // 2026
+  '2026-01-01':'วันขึ้นปีใหม่',   '2026-02-23':'วันมาฆบูชา',
+  '2026-04-06':'วันจักรี',         '2026-04-13':'สงกรานต์',
+  '2026-04-14':'สงกรานต์',         '2026-04-15':'สงกรานต์',
+  '2026-05-01':'วันแรงงาน',        '2026-05-04':'วันฉัตรมงคล',
+  '2026-06-01':'วันวิสาขบูชา',     '2026-07-29':'วันอาสาฬหบูชา',
+  '2026-08-12':'วันแม่แห่งชาติ',   '2026-10-13':'วันนวมินทรมหาราช',
+  '2026-10-23':'วันจุฬาลงกรณ์',    '2026-12-05':'วันพ่อแห่งชาติ',
+  '2026-12-10':'วันรัฐธรรมนูญ',    '2026-12-31':'วันสิ้นปี',
+};
+
+// THEME
+const THEMES = ['cyan','purple','green','warm'];
+function applyTheme(theme, lightMode) {
+  THEMES.forEach(t=>document.body.classList.remove('theme-'+t));
+  document.body.classList.remove('light-mode');
+  if (theme&&theme!=='cyan') document.body.classList.add('theme-'+theme);
+  if (lightMode) document.body.classList.add('light-mode');
+  document.querySelectorAll('.theme-swatch').forEach(s=>s.classList.toggle('active',s.dataset.theme===(theme||'cyan')));
+  const tog=document.getElementById('lightModeToggle');
+  if (tog) tog.classList.toggle('on',!!lightMode);
+}
+function setupTheme() {
+  document.getElementById('themePicker').addEventListener('click', e=>{
+    const sw=e.target.closest('.theme-swatch'); if (!sw) return;
+    state.theme=sw.dataset.theme; applyTheme(state.theme,state.lightMode); autoSave(); haptic(10);
+  });
+  document.getElementById('lightModeToggle').addEventListener('click', ()=>{
+    state.lightMode=!state.lightMode; applyTheme(state.theme,state.lightMode); autoSave(); haptic(10);
+  });
+}
+
+function haptic(ms) { if (navigator.vibrate) navigator.vibrate(ms||10); }
+
+// SWIPE
+const TAB_ORDER=['dashboard','ot','income','expense','stats','settings'];
+let _swipeX=0;
+function setupSwipe() {
+  const el=document.getElementById('app');
+  el.addEventListener('touchstart', e=>{ _swipeX=e.touches[0].clientX; },{passive:true});
+  el.addEventListener('touchend', e=>{
+    const dx=e.changedTouches[0].clientX-_swipeX; if (Math.abs(dx)<60) return;
+    const active=TAB_ORDER.findIndex(n=>document.getElementById('page-'+n).classList.contains('active'));
+    if (dx<0&&active<TAB_ORDER.length-1) switchTab(TAB_ORDER[active+1]);
+    if (dx>0&&active>0) switchTab(TAB_ORDER[active-1]);
+    haptic(8);
+  },{passive:true});
+}
+
+// STATS
+function renderStats() {
+  let totalOTH=0, totalInc=0, totalExpAll=0;
+  state.months.forEach((_,i)=>{ const c=getMonthCalc(i); totalOTH+=c.sumOT1+c.sumOT15+c.sumOT3; totalInc+=c.totalIncome; totalExpAll+=c.expTotal; });
+  const avgInc=state.months.length>0?totalInc/state.months.length:0;
+  const cur=getMonthCalc(state.currentMonth);
+  const daysLeft=state.months[state.currentMonth].days.filter(d=>new Date(d.date)>new Date()).length;
+  const daysTotal=31, daysDone=Math.max(daysTotal-daysLeft, 1);
+  const forecastInc=cur.totalIncome>0?(cur.totalIncome/daysDone)*daysTotal:0;
+  document.getElementById('statsHero').innerHTML=`
+    <div class="stats-hero-card wide">
+      <div class="stats-hero-val" style="background:linear-gradient(90deg,var(--accent),var(--accent-pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${fmt(totalInc)} ฿</div>
+      <div class="stats-hero-label">รายได้สะสมทุกรอบ</div>
+    </div>
+    <div class="stats-hero-card"><div class="stats-hero-val" style="color:var(--green)">${totalOTH.toFixed(1)}</div><div class="stats-hero-label">OT ชม. สะสม</div></div>
+    <div class="stats-hero-card"><div class="stats-hero-val" style="color:var(--accent2)">${fmt(avgInc)} ฿</div><div class="stats-hero-label">รายได้เฉลี่ย/รอบ</div></div>
+    <div class="stats-hero-card"><div class="stats-hero-val" style="color:var(--yellow)">${state.months.length}</div><div class="stats-hero-label">รอบบัญชีทั้งหมด</div></div>
+    <div class="stats-hero-card"><div class="stats-hero-val" style="color:var(--red)">${fmt(totalExpAll)} ฿</div><div class="stats-hero-label">รายจ่ายสะสม</div></div>`;
+  const pct=Math.min(daysDone/daysTotal*100,100), needed=state.salary>0?state.salary-cur.totalIncome:0;
+  document.getElementById('forecastCard').innerHTML=`
+    <div class="forecast-title">🔮 คาดการณ์รายได้รอบนี้ (${state.months[state.currentMonth].name})</div>
+    <div class="forecast-row"><span>รายได้ตอนนี้</span><span class="forecast-val">${fmt(cur.totalIncome)} ฿</span></div>
+    <div class="forecast-row"><span>คาดการณ์สิ้นรอบ</span><span class="forecast-val" style="color:var(--green)">${fmt(forecastInc)} ฿</span></div>
+    <div class="forecast-row"><span>วันที่ผ่านไป / ทั้งหมด</span><span class="forecast-val">${daysDone} / ${daysTotal} วัน</span></div>
+    <div class="forecast-row"><span>เหลือจ่ายอีก</span><span class="forecast-val" style="color:${needed>0?'var(--red)':'var(--green)'}">${fmt(Math.abs(needed))} ฿</span></div>
+    <div class="forecast-prog-wrap"><div class="forecast-prog" style="width:${pct}%"></div></div>`;
+  renderChart('chartIncome', state.months.map((m,i)=>({ label:m.name.split('-')[0], val:getMonthCalc(i).totalIncome, color:'linear-gradient(180deg,var(--accent),var(--accent-purple))' })));
+  renderChart('chartOT', state.months.map((m,i)=>{ const c=getMonthCalc(i); return { label:m.name.split('-')[0], val:c.sumOT1+c.sumOT15+c.sumOT3, color:'linear-gradient(180deg,var(--yellow),var(--accent-pink))' }; }));
+}
+
+function renderChart(id, data) {
+  const wrap=document.getElementById(id); if (!wrap) return;
+  const maxVal=Math.max(...data.map(d=>d.val),1);
+  wrap.innerHTML=data.map((d,i)=>`
+    <div class="chart-col">
+      <div class="chart-bar-val">${d.val>0?(d.val>=1000?Math.round(d.val/1000)+'k':Math.round(d.val)):''}</div>
+      <div class="chart-bar-wrap"><div class="chart-bar" style="height:${Math.max(d.val/maxVal*100,2)}%;background:${d.color};opacity:${i===state.currentMonth?1:0.55};" title="${d.label}: ${fmt(d.val)}"></div></div>
+      <div class="chart-bar-label">${d.label}</div>
+    </div>`).join('');
+}
+
+function applyHolidayHighlight() {
+  const rows=document.getElementById('otTableBody').querySelectorAll('tr');
+  const m=state.months[state.currentMonth];
+  m.days.forEach((d,i)=>{
+    if (!rows[i]) return;
+    const isHoliday=TH_HOLIDAYS.has(d.date);
+    rows[i].classList.toggle('holiday-row',isHoliday);
+    if (isHoliday) {
+      const cell=rows[i].querySelector('td:first-child');
+      const dt=new Date(d.date);
+      const isSat=dt.getDay()===6;
+      const hasOT=(parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
+      // สร้าง cell ใหม่ทั้งหมดแทน innerHTML+= เพื่อป้องกัน badge ซ้อน
+      let html=`<strong>${dt.getDate()}</strong>`;
+      if (isSat&&hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
+      html+=`<br><span class="holiday-badge">${TH_HOLIDAY_NAMES[d.date]||'หยุด'}</span>`;
+      cell.innerHTML=html;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INIT — async เพราะต้องรอ hashPin
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  await loadState();
+  setupPinButtons();
+  setupOTTableListener();
+  setupTheme();
+  setupSwipe();
+  applyTheme(state.theme, state.lightMode);
+  document.querySelectorAll('.pin-btn:not(.empty)').forEach(b=>b.addEventListener('click',()=>haptic(8)));
+  ['omoda_ot_v1','omoda_ot_v2'].forEach(k=>localStorage.removeItem(k));
+}
+init();
+</script>
+</body>
+</html>
