@@ -63,6 +63,8 @@
   .pin-btn.empty { background: transparent; border: none; cursor: default; }
   .pin-error { color: var(--red); font-size: 13px; margin-top: 16px; height: 20px; }
   .pin-lockout { color: var(--yellow); font-size: 12px; margin-top: 8px; text-align: center; }
+  /* iOS Safe Area — ป้องกันเนื้อหาล้นใต้ Home Indicator */
+  #pinScreen { padding-bottom: max(32px, env(safe-area-inset-bottom)); }
 </style>
 <style>
   /* MODALS */
@@ -78,7 +80,7 @@
   .confirm-actions { display: flex; gap: 8px; }
   .bottom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: flex-end; justify-content: center; z-index: 9000; }
   .bottom-overlay.hidden { display: none; }
-  .bottom-sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 480px; border-top: 1px solid rgba(0,212,255,0.2); box-shadow: var(--glow-cyan); }
+  .bottom-sheet { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px max(40px, calc(24px + env(safe-area-inset-bottom))); width: 100%; max-width: 480px; border-top: 1px solid rgba(0,212,255,0.2); box-shadow: var(--glow-cyan); }
   .bottom-sheet h3 { font-size: 17px; margin-bottom: 16px; color: var(--accent2); }
   #app { display: none; }
   #app.visible { display: block; }
@@ -98,7 +100,7 @@
   .tabs::-webkit-scrollbar { display: none; }
   .tab { flex: 1; min-width: 80px; padding: 11px 4px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.2s; font-family: 'Sarabun', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
   .tab.active { color: var(--accent2); border-bottom-color: var(--accent); text-shadow: 0 0 8px rgba(0,212,255,0.5); }
-  .page { display: none; padding: 16px; }
+  .page { display: none; padding: 16px; padding-bottom: max(16px, calc(16px + env(safe-area-inset-bottom))); }
   .page.active { display: block; }
   /* DASHBOARD */
   .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
@@ -206,7 +208,7 @@
   .rate-badge.ot1 { background: rgba(0,212,255,0.15); color: var(--accent2); border: 1px solid rgba(0,212,255,0.3); }
   .rate-badge.ot15 { background: rgba(255,212,84,0.15); color: var(--yellow); border: 1px solid rgba(255,212,84,0.3); }
   .rate-badge.ot3 { background: rgba(255,95,126,0.15); color: var(--red); border: 1px solid rgba(255,95,126,0.3); }
-  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid rgba(0,212,255,0.3); color: var(--text); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; z-index: 9999; transition: transform 0.25s; white-space: nowrap; box-shadow: var(--glow-cyan); }
+  .toast { position: fixed; bottom: max(24px, calc(16px + env(safe-area-inset-bottom))); left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid rgba(0,212,255,0.3); color: var(--text); padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; z-index: 9999; transition: transform 0.25s; white-space: nowrap; box-shadow: var(--glow-cyan); }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .form-group { margin-bottom: 14px; }
   .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 5px; }
@@ -262,6 +264,12 @@
   /* HOLIDAY */
   .holiday-badge { font-size:9px; background:rgba(240,64,160,0.2); color:var(--accent-pink); border-radius:4px; padding:1px 4px; font-weight:700; border:1px solid rgba(240,64,160,0.3); white-space:nowrap; }
   .ot-table tr.holiday-row td { background:rgba(240,64,160,0.05); }
+  /* TODAY */
+  .ot-table tr.today-row td { background: rgba(0,212,255,0.08); }
+  .ot-table tr.today-row td:first-child strong { color: var(--accent2); }
+  .today-badge { font-size:9px; background:rgba(0,212,255,0.2); color:var(--accent2); border-radius:4px; padding:1px 4px; font-weight:700; border:1px solid rgba(0,212,255,0.4); white-space:nowrap; }
+  /* PIN FORGOT */
+  .pin-forgot { font-size: 11px; color: var(--text3); margin-top: 16px; text-align: center; }
 </style>
 </head>
 <body>
@@ -276,13 +284,41 @@
     <div class="pin-dot" id="dot2"></div><div class="pin-dot" id="dot3"></div>
   </div>
   <div class="pin-grid">
-    <button class="pin-btn" id="pb1">1</button><button class="pin-btn" id="pb2">2</button><button class="pin-btn" id="pb3">3</button>
-    <button class="pin-btn" id="pb4">4</button><button class="pin-btn" id="pb5">5</button><button class="pin-btn" id="pb6">6</button>
-    <button class="pin-btn" id="pb7">7</button><button class="pin-btn" id="pb8">8</button><button class="pin-btn" id="pb9">9</button>
-    <button class="pin-btn empty"></button><button class="pin-btn" id="pb0">0</button><button class="pin-btn del" id="pbDel">⌫</button>
+    <button class="pin-btn" id="pb1" aria-label="กด 1">1</button><button class="pin-btn" id="pb2" aria-label="กด 2">2</button><button class="pin-btn" id="pb3" aria-label="กด 3">3</button>
+    <button class="pin-btn" id="pb4" aria-label="กด 4">4</button><button class="pin-btn" id="pb5" aria-label="กด 5">5</button><button class="pin-btn" id="pb6" aria-label="กด 6">6</button>
+    <button class="pin-btn" id="pb7" aria-label="กด 7">7</button><button class="pin-btn" id="pb8" aria-label="กด 8">8</button><button class="pin-btn" id="pb9" aria-label="กด 9">9</button>
+    <button class="pin-btn empty" aria-hidden="true"></button><button class="pin-btn" id="pb0" aria-label="กด 0">0</button><button class="pin-btn del" id="pbDel" aria-label="ลบตัวเลข">⌫</button>
   </div>
   <div class="pin-error" id="pinError"></div>
   <div class="pin-lockout" id="pinLockout"></div>
+  <div class="pin-forgot" id="pinForgotLink">ลืม PIN? <span style="color:var(--accent);text-decoration:underline;cursor:pointer;" id="btnPinForgot">รีเซ็ตแอพ</span></div>
+</div>
+
+<!-- RESET APP MODAL -->
+<div id="resetModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>⚠️ รีเซ็ตแอพ</h3>
+    <div class="confirm-msg">การรีเซ็ตจะ<strong style="color:var(--red)">ลบข้อมูลทั้งหมด</strong>และตั้ง PIN ใหม่เป็น 1234<br><br>ยืนยันหรือไม่?</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost btn-full" id="btnCancelReset">ยกเลิก</button>
+      <button class="btn btn-danger-outline btn-full" id="btnConfirmReset">รีเซ็ตทั้งหมด</button>
+    </div>
+  </div>
+</div>
+
+<!-- SALARY PIN MODAL -->
+<div id="salaryPinModal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>🔒 ยืนยันตัวตน</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">ใส่รหัส PIN เพื่อดูเงินเดือนฐาน</p>
+    <input type="password" inputmode="numeric" maxlength="4" id="salaryPin"
+      class="modal-input" placeholder="••••" autocomplete="off">
+    <div class="modal-err" id="salaryPinError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-full" id="btnCancelSalaryPin">ยกเลิก</button>
+      <button class="btn btn-primary btn-full" id="btnConfirmSalaryPin">ยืนยัน</button>
+    </div>
+  </div>
 </div>
 
 <!-- CHANGE PIN MODAL -->
@@ -389,6 +425,7 @@
             <th>อาหาร<br>กลางวัน<br><span style="color:var(--green);font-size:10px;">50฿</span></th>
             <th>อาหาร<br>OT<br><span style="color:var(--green);font-size:10px;">50฿</span></th>
             <th>ค่ากะ<br><span style="color:var(--green);font-size:10px;">100฿</span></th>
+            <th>หมายเหตุ</th>
           </tr>
         </thead>
         <tbody id="otTableBody"></tbody>
@@ -397,11 +434,13 @@
             <td colspan="2" style="text-align:left;padding-left:8px;">รวม</td>
             <td id="footOT1">0</td><td id="footOT15">0</td><td id="footOT3">0</td>
             <td id="footTravel">0</td><td id="footLunch">0</td><td id="footFoodOT">0</td><td id="footShift">0</td>
+            <td>—</td>
           </tr>
           <tr>
             <td colspan="2" style="text-align:left;padding-left:8px;color:var(--accent2);">เป็นเงิน</td>
             <td id="footOT1B" style="color:var(--accent2)">0</td><td id="footOT15B" style="color:var(--accent2)">0</td><td id="footOT3B" style="color:var(--accent2)">0</td>
             <td id="footTravelB" style="color:var(--green)">0</td><td id="footLunchB" style="color:var(--green)">0</td><td id="footFoodOTB" style="color:var(--green)">0</td><td id="footShiftB" style="color:var(--green)">0</td>
+            <td>—</td>
           </tr>
         </tfoot>
       </table>
@@ -441,7 +480,10 @@
   <div class="page" id="page-expense">
     <div class="month-pills" id="expMonthPills"></div>
     <div id="expenseList" style="margin-bottom:12px;"></div>
-    <button class="btn btn-ghost btn-full" id="btnAddExpense" style="margin-bottom:16px;">+ เพิ่มรายจ่าย</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-ghost btn-full" id="btnAddExpense">+ เพิ่มรายจ่าย</button>
+      <button class="btn btn-ghost" id="btnCopyExpenses" title="คัดลอกรายจ่ายจากรอบก่อน" style="white-space:nowrap;">📋 รอบก่อน</button>
+    </div>
     <div class="summary-card">
       <div class="summary-row-item"><span>รายจ่ายทั้งหมด</span><span id="expTotal">0 ฿</span></div>
       <div class="summary-row-item"><span>จ่ายแล้ว ✅</span><span class="val-green" id="expPaid">0 ฿</span></div>
@@ -460,6 +502,7 @@
     <div class="forecast-card" id="forecastCard"></div>
     <div class="chart-wrap"><div class="chart-title">รายได้รวมแต่ละรอบ</div><div class="chart-bars" id="chartIncome"></div></div>
     <div class="chart-wrap"><div class="chart-title">ชั่วโมง OT แต่ละรอบ</div><div class="chart-bars" id="chartOT"></div></div>
+    <div class="chart-wrap"><div class="chart-title">รายจ่ายแต่ละรอบ</div><div class="chart-bars" id="chartExp"></div></div>
   </div>
 
   <!-- SETTINGS -->
@@ -484,7 +527,7 @@
       <div class="settings-card">
         <div class="settings-row">
           <div class="settings-row-icon">💼</div>
-          <div style="flex:1;"><div class="settings-row-label">เงินเดือนฐาน</div><div class="settings-row-sub">กดตาเพื่อดู/ซ่อน</div></div>
+          <div style="flex:1;"><div class="settings-row-label">เงินเดือนฐาน</div><div class="settings-row-sub">กดตาเพื่อยืนยัน PIN แล้วดู/ซ่อน</div></div>
           <span class="salary-mask" id="salaryMask">••••••</span>
           <span class="salary-reveal" id="btnToggleSalary">👁</span>
         </div>
@@ -509,12 +552,21 @@
       <div class="settings-card">
         <div class="settings-row" style="cursor:pointer;" id="btnSettingsPin"><div class="settings-row-icon">🔑</div><div style="flex:1;"><div class="settings-row-label">เปลี่ยนรหัส PIN</div></div><span style="color:var(--text3);">›</span></div>
         <div class="settings-row" style="cursor:pointer;" id="btnExport"><div class="settings-row-icon">📤</div><div style="flex:1;"><div class="settings-row-label">ส่งออกข้อมูล (JSON)</div></div><span style="color:var(--text3);">›</span></div>
+        <div class="settings-row" style="cursor:pointer;" id="btnExportCSV"><div class="settings-row-icon">📊</div><div style="flex:1;"><div class="settings-row-label">ส่งออก CSV (รอบปัจจุบัน)</div></div><span style="color:var(--text3);">›</span></div>
         <div class="settings-row" style="cursor:pointer;" id="btnImport"><div class="settings-row-icon">📥</div><div style="flex:1;"><div class="settings-row-label">นำเข้าข้อมูล (JSON)</div></div><span style="color:var(--text3);">›</span></div>
       </div>
     </div>
     <div class="settings-section">
       <div class="settings-label">รอบบัญชี</div>
       <div class="settings-card" id="monthManageList"></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">วันหยุดพิเศษ (กำหนดเอง)</div>
+      <div class="settings-card" id="customHolidayList"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="date" id="newHolidayDate" class="settings-input" style="flex:1;text-align:left;">
+        <button class="btn btn-primary btn-sm" id="btnAddHoliday">+ เพิ่ม</button>
+      </div>
     </div>
     <button class="btn btn-primary btn-full" id="btnSaveSettings" style="margin-bottom:16px;">💾 บันทึกการตั้งค่า</button>
   </div>
@@ -566,7 +618,8 @@ let state = {
   currentMonth: 0,
   months: [],
   theme: 'cyan',
-  lightMode: false
+  lightMode: false,
+  customHolidays: []
 };
 let _dirty = false;
 
@@ -584,6 +637,7 @@ async function loadState() {
         delete parsed.pin;
       }
       Object.assign(state, parsed);
+      if (!state.customHolidays) state.customHolidays = [];
     }
   } catch(e) {}
   // ใช้ครั้งแรก ตั้ง default PIN = 1234
@@ -605,11 +659,19 @@ function markDirty() {
 }
 
 function saveAll(silent) {
-  const s = parseFloat(document.getElementById('salaryInput').value);
-  if (!isNaN(s) && s >= 0) state.salary = s;
-  state.rateOT1  = parseFloat(document.getElementById('rateOT1').value)  || state.rateOT1;
-  state.rateOT15 = parseFloat(document.getElementById('rateOT15').value) || state.rateOT15;
-  state.rateOT3  = parseFloat(document.getElementById('rateOT3').value)  || state.rateOT3;
+  // FIX: อ่าน salary จาก DOM เฉพาะเมื่อ salaryEditRow แสดงอยู่เท่านั้น
+  // ป้องกันกรณี row ซ่อนอยู่แล้วได้ค่า 0 มาทับ state
+  const salaryRow = document.getElementById('salaryEditRow');
+  if (salaryRow && salaryRow.style.display !== 'none') {
+    const s = parseFloat(document.getElementById('salaryInput').value);
+    if (!isNaN(s) && s >= 0) state.salary = s;
+  }
+  const r1 = parseFloat(document.getElementById('rateOT1').value);
+  const r15 = parseFloat(document.getElementById('rateOT15').value);
+  const r3  = parseFloat(document.getElementById('rateOT3').value);
+  if (!isNaN(r1))  state.rateOT1  = r1;
+  if (!isNaN(r15)) state.rateOT15 = r15;
+  if (!isNaN(r3))  state.rateOT3  = r3;
   state.salaryHidden = true;
   document.getElementById('salaryEditRow').style.display = 'none';
   document.getElementById('salaryMask').textContent = '••••••';
@@ -621,9 +683,11 @@ function saveAll(silent) {
 function autoSave() { saveAll(true); }
 
 // ═══════════════════════════════════════════════════════════
-//  FIX #1: PIN — async SHA-256 + brute-force lockout
+//  FIX #1: PIN — async SHA-256 + brute-force lockout (persistent via sessionStorage)
 // ═══════════════════════════════════════════════════════════
-let pinInput = '', pinFails = 0, lockUntil = 0;
+let pinInput = '', pinFails = 0;
+// FIX: เก็บ lockUntil ใน sessionStorage เพื่อให้ lockout ยังอยู่หลัง reload
+let lockUntil = parseInt(sessionStorage.getItem('pin_lock_until') || '0', 10);
 const MAX_FAILS = 5, LOCK_SECS = 30;
 let lockTimer = null;
 
@@ -662,6 +726,7 @@ async function checkPin() {
     pinInput = '';
     if (pinFails >= MAX_FAILS) {
       lockUntil = Date.now() + LOCK_SECS * 1000;
+      sessionStorage.setItem('pin_lock_until', String(lockUntil)); // FIX: persistent lockout
       startLockTimer();
       document.getElementById('pinError').textContent = '';
       document.getElementById('pinSubText').textContent = 'ระบบล็อกชั่วคราว';
@@ -678,6 +743,7 @@ function startLockTimer() {
     const rem = Math.ceil((lockUntil - Date.now()) / 1000);
     if (rem <= 0) {
       clearInterval(lockTimer); pinFails = 0;
+      sessionStorage.removeItem('pin_lock_until'); // FIX: clear persistent lockout
       document.getElementById('pinLockout').textContent = '';
       document.getElementById('pinSubText').textContent = 'ใส่รหัส 4 หลักเพื่อเข้าใช้งาน';
       updatePinDots(false);
@@ -717,7 +783,7 @@ function createMonth(name, startDateStr) {
   for (let i = 0; i < 31; i++) {
     const d = new Date(start); d.setDate(start.getDate() + i);
     days.push({ date: d.toISOString().split('T')[0], dow: d.getDay(),
-                ot1: '', ot15: '', ot3: '', travel: false, lunch: false, foodOT: false, shift: false });
+                ot1: '', ot15: '', ot3: '', travel: false, lunch: false, foodOT: false, shift: false, note: '' });
   }
   return { id: Date.now()+Math.random(), name, startDate: startDateStr, days, expenses: [], diligence: false };
 }
@@ -752,10 +818,11 @@ function deleteMonth(i) {
 }
 
 let _confirmCallback = null;
-function showConfirm(title, msg, onYes) {
+function showConfirm(title, msg, onYes, btnText) {
   _confirmCallback = onYes;
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMsg').textContent   = msg;
+  document.getElementById('btnConfirmYes').textContent = btnText || 'ลบ';
   document.getElementById('confirmModal').classList.remove('hidden');
 }
 function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); _confirmCallback = null; }
@@ -805,14 +872,50 @@ function updateSalaryRates() {
 }
 
 function toggleSalary() {
-  state.salaryHidden = !state.salaryHidden;
-  if (!state.salaryHidden) {
-    document.getElementById('salaryEditRow').style.display = 'flex';
-    document.getElementById('salaryMask').textContent = fmt(state.salary)+' ฿';
+  // ถ้าซ่อนอยู่ → ต้องยืนยัน PIN ก่อนเปิด
+  if (state.salaryHidden) {
+    openSalaryPinModal();
   } else {
+    // ถ้าเปิดอยู่แล้ว → ซ่อนได้เลยไม่ต้องถาม PIN
+    state.salaryHidden = true;
     document.getElementById('salaryEditRow').style.display = 'none';
     document.getElementById('salaryMask').textContent = '••••••';
+    renderSummaries();
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SALARY PIN MODAL
+// ═══════════════════════════════════════════════════════════
+function openSalaryPinModal() {
+  document.getElementById('salaryPin').value = '';
+  document.getElementById('salaryPinError').textContent = '';
+  document.getElementById('salaryPinModal').classList.remove('hidden');
+  // focus หลัง animation เล็กน้อย
+  setTimeout(() => document.getElementById('salaryPin').focus(), 100);
+}
+function closeSalaryPinModal() {
+  document.getElementById('salaryPinModal').classList.add('hidden');
+}
+async function confirmSalaryPin() {
+  const input = document.getElementById('salaryPin').value;
+  const errEl = document.getElementById('salaryPinError');
+  if (!/^\d{4}$/.test(input)) {
+    errEl.textContent = '❌ กรุณากรอกรหัส 4 หลัก';
+    return;
+  }
+  const ok = await verifyPin(input, state.pinHash);
+  if (!ok) {
+    errEl.textContent = '❌ รหัสไม่ถูกต้อง';
+    document.getElementById('salaryPin').value = '';
+    document.getElementById('salaryPin').focus();
+    return;
+  }
+  // PIN ถูก → เปิดดูเงินเดือน
+  closeSalaryPinModal();
+  state.salaryHidden = false;
+  document.getElementById('salaryEditRow').style.display = 'flex';
+  document.getElementById('salaryMask').textContent = fmt(state.salary) + ' ฿';
   renderSummaries();
 }
 function hideSalaryRow() {
@@ -870,6 +973,9 @@ function renderOTTable() {
     const dt=new Date(d.date), dow=dt.getDay(), isSat=dow===6, isSun=dow===0;
     const tr=document.createElement('tr');
     if (isSat) tr.className='sat-row'; if (isSun) tr.className='sun-row';
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = d.date === todayStr;
+    if (isToday) tr.className = (tr.className ? tr.className + ' ' : '') + 'today-row';
     const bCls = isSat?'sat':isSun?'sun':'wd';
     const hasOT = (parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
     const satBadge = isSat&&hasOT?`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`:'';
@@ -878,13 +984,14 @@ function renderOTTable() {
         <input type="checkbox" ${d[f]?'checked':''} style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;"
           data-mi="${mi}" data-di="${i}" data-field="${f}">
       </label></td>`).join('');
+    const noteHtml = `<td style="padding:2px;"><input type="text" value="${(d.note||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="—" style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:3px 4px;font-family:'Sarabun',sans-serif;text-align:center;" data-mi="${mi}" data-di="${i}" data-field="note" maxlength="30"></td>`;
     tr.innerHTML = `
-      <td><strong>${dt.getDate()}</strong>${satBadge}</td>
+      <td><strong>${dt.getDate()}</strong>${satBadge}${isToday ? '<br><span class="today-badge">วันนี้</span>' : ''}</td>
       <td><span class="day-badge ${bCls}">${DAYS_SHORT[dow]}</span></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot1}" class="${d.ot1?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot1"></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot15}" class="${d.ot15?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot15"></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot3}" class="${d.ot3?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot3"></td>
-      ${cbHtml}`;
+      ${cbHtml}${noteHtml}`;
     body.appendChild(tr);
   });
   // listener ผูกไว้ที่ wrapper ซึ่งไม่ถูก re-create (ดู setupOTTableListener)
@@ -895,6 +1002,11 @@ function renderOTTable() {
 function onOTTableChange(e) {
   const el=e.target, mi=parseInt(el.dataset.mi), di=parseInt(el.dataset.di), field=el.dataset.field;
   if (isNaN(mi)||isNaN(di)||!field) return;
+  if (el.type === 'text' && field === 'note') {
+    state.months[mi].days[di].note = el.value;
+    autoSave();
+    return;
+  }
   if (el.type==='checkbox') {
     state.months[mi].days[di][field]=el.checked;
   } else {
@@ -917,10 +1029,10 @@ function updateSatBadge(mi,di) {
   const dt=new Date(d.date), isSat=dt.getDay()===6;
   if (!isSat) return;
   // build cell content cleanly — ไม่ใช้ innerHTML+= เพื่อป้องกัน holiday badge หาย
-  const isHoliday=TH_HOLIDAYS.has(d.date);
+  const isHoliday=isHolidayDate(d.date);
   let html=`<strong>${dt.getDate()}</strong>`;
   if (hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
-  if (isHoliday) html+=`<br><span class="holiday-badge">${TH_HOLIDAY_NAMES[d.date]||'หยุด'}</span>`;
+  if (isHoliday) html+=`<br><span class="holiday-badge">${getHolidayName(d.date)||'หยุด'}</span>`;
   cell.innerHTML=html;
 }
 
@@ -989,12 +1101,37 @@ function renderExpenses() {
   wrap.innerHTML='';
   m.expenses.forEach((e,i)=>{
     const div=document.createElement('div'); div.className='expense-edit-row';
-    const ps=e.paid?'background:rgba(34,197,94,0.2);border:1px solid var(--green);color:var(--green);':'background:var(--surface2);border:1px solid var(--border);color:var(--text2);';
-    div.innerHTML=`
-      <input type="text" value="${e.name}" placeholder="รายการ" data-idx="${i}" data-field="name">
-      <input type="number" value="${e.amount}" placeholder="0" inputmode="numeric" data-idx="${i}" data-field="amount" style="width:85px;text-align:right;">
-      <button class="btn btn-sm" style="padding:8px 10px;border-radius:8px;white-space:nowrap;${ps}" data-paid="${i}">${e.paid?'✅':'○'}</button>
-      <button class="btn-icon-round" data-del="${i}">✕</button>`;
+
+    // ชื่อรายการ — ใช้ .value แทน innerHTML เพื่อป้องกัน XSS
+    const nameInput=document.createElement('input');
+    nameInput.type='text'; nameInput.placeholder='รายการ';
+    nameInput.value=e.name; nameInput.dataset.idx=i; nameInput.dataset.field='name';
+
+    // จำนวนเงิน
+    const amtInput=document.createElement('input');
+    amtInput.type='number'; amtInput.placeholder='0'; amtInput.inputMode='numeric';
+    amtInput.value=e.amount; amtInput.dataset.idx=i; amtInput.dataset.field='amount';
+    amtInput.style.cssText='width:85px;text-align:right;';
+
+    // ปุ่มจ่ายแล้ว/ยังไม่จ่าย
+    const paidBtn=document.createElement('button');
+    paidBtn.className='btn btn-sm';
+    paidBtn.style.cssText='padding:8px 10px;border-radius:8px;white-space:nowrap;';
+    if (e.paid) {
+      paidBtn.style.cssText+='background:rgba(34,197,94,0.2);border:1px solid var(--green);color:var(--green);';
+      paidBtn.textContent='✅';
+    } else {
+      paidBtn.style.cssText+='background:var(--surface2);border:1px solid var(--border);color:var(--text2);';
+      paidBtn.textContent='○';
+    }
+    paidBtn.dataset.paid=i;
+
+    // ปุ่มลบ
+    const delBtn=document.createElement('button');
+    delBtn.className='btn-icon-round'; delBtn.textContent='✕'; delBtn.dataset.del=i;
+    delBtn.setAttribute('aria-label','ลบรายการ');
+
+    div.append(nameInput, amtInput, paidBtn, delBtn);
     wrap.appendChild(div);
   });
 }
@@ -1078,6 +1215,12 @@ document.getElementById('btnSaveSettings').addEventListener('click', ()=>saveAll
 document.getElementById('btnToggleSalary').addEventListener('click', toggleSalary);
 document.getElementById('btnHideSalary').addEventListener('click', hideSalaryRow);
 document.getElementById('btnCancelPin').addEventListener('click', closeChangePinModal);
+// Salary PIN modal
+document.getElementById('btnCancelSalaryPin').addEventListener('click', closeSalaryPinModal);
+document.getElementById('btnConfirmSalaryPin').addEventListener('click', confirmSalaryPin);
+document.getElementById('salaryPin').addEventListener('keydown', e => { if (e.key === 'Enter') confirmSalaryPin(); });
+// ปิด modal เมื่อคลิก overlay นอก modal-box
+document.getElementById('salaryPinModal').addEventListener('click', e => { if (e.target === document.getElementById('salaryPinModal')) closeSalaryPinModal(); });
 document.getElementById('btnSavePin').addEventListener('click', doChangePin);
 document.getElementById('btnCancelMonth').addEventListener('click', closeAddMonth);
 document.getElementById('btnConfirmMonth').addEventListener('click', confirmAddMonth);
@@ -1094,7 +1237,25 @@ document.getElementById('btnConfirmYes').addEventListener('click', ()=>{
 document.getElementById('btnExport').addEventListener('click', ()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='ot_tracker_backup.json'; a.click(); showToast('📤 ส่งออกข้อมูลแล้ว');
+  a.download='ot_tracker_backup.json'; a.click(); showToast('📤 ส่งออก JSON แล้ว');
+});
+document.getElementById('btnExportCSV').addEventListener('click', ()=>{
+  const m = state.months[state.currentMonth];
+  const rows = [['วันที่','วัน','OT×1','OT×1.5','OT×3','เดินทาง','อาหารกลางวัน','อาหารOT','ค่ากะ','หมายเหตุ']];
+  m.days.forEach(d => {
+    const dt = new Date(d.date);
+    rows.push([
+      d.date, DAYS_SHORT[dt.getDay()],
+      d.ot1||0, d.ot15||0, d.ot3||0,
+      d.travel?1:0, d.lunch?1:0, d.foodOT?1:0, d.shift?1:0,
+      d.note||''
+    ]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`ot_${m.name.replace(/[^\w]/g,'_')}.csv`; a.click();
+  showToast('📊 ส่งออก CSV แล้ว');
 });
 document.getElementById('btnImport').addEventListener('click', ()=>{
   const input=document.createElement('input'); input.type='file'; input.accept='.json';
@@ -1119,8 +1280,10 @@ document.getElementById('btnImport').addEventListener('click', ()=>{
         }
         // migration: pin plaintext → hash
         if (data.pin && !data.pinHash) { data.pinHash=await hashPin(data.pin); delete data.pin; }
-        Object.assign(state, data); saveAll(true); renderAll();
-        showToast('📥 นำเข้าข้อมูลสำเร็จ');
+        showConfirm('นำเข้าข้อมูล', `นำเข้าข้อมูลจาก "${file.name}" จะแทนที่ข้อมูลทั้งหมดที่มีอยู่\nต้องการดำเนินการต่อหรือไม่?`, () => {
+          Object.assign(state, data); saveAll(true); renderAll();
+          showToast('📥 นำเข้าข้อมูลสำเร็จ');
+        }, 'นำเข้า');
       } catch(err) { showToast('❌ ไฟล์ไม่ถูกต้อง: '+(err.message||'unknown')); }
     });
     reader.readAsText(file);
@@ -1145,6 +1308,9 @@ const TH_HOLIDAYS = new Set([
   '2026-01-01','2026-02-23','2026-04-06','2026-04-13','2026-04-14','2026-04-15',
   '2026-05-01','2026-05-04','2026-06-01','2026-07-29',
   '2026-08-12','2026-10-13','2026-10-23','2026-12-05','2026-12-10','2026-12-31',
+  '2027-01-01','2027-02-12','2027-04-06','2027-04-13','2027-04-14','2027-04-15',
+  '2027-05-01','2027-05-10','2027-05-26','2027-06-03','2027-07-20',
+  '2027-08-12','2027-10-13','2027-10-23','2027-12-05','2027-12-10','2027-12-31',
 ]);
 const TH_HOLIDAY_NAMES = {
   // 2025
@@ -1167,6 +1333,16 @@ const TH_HOLIDAY_NAMES = {
   '2026-08-12':'วันแม่แห่งชาติ',   '2026-10-13':'วันนวมินทรมหาราช',
   '2026-10-23':'วันจุฬาลงกรณ์',    '2026-12-05':'วันพ่อแห่งชาติ',
   '2026-12-10':'วันรัฐธรรมนูญ',    '2026-12-31':'วันสิ้นปี',
+  // 2027
+  '2027-01-01':'วันขึ้นปีใหม่',   '2027-02-12':'วันมาฆบูชา',
+  '2027-04-06':'วันจักรี',         '2027-04-13':'สงกรานต์',
+  '2027-04-14':'สงกรานต์',         '2027-04-15':'สงกรานต์',
+  '2027-05-01':'วันแรงงาน',        '2027-05-10':'วันฉัตรมงคล',
+  '2027-05-26':'วันวิสาขบูชา',     '2027-06-03':'วันเฉลิมฯ ร.10',
+  '2027-07-20':'วันอาสาฬหบูชา',    '2027-08-12':'วันแม่แห่งชาติ',
+  '2027-10-13':'วันนวมินทรมหาราช', '2027-10-23':'วันจุฬาลงกรณ์',
+  '2027-12-05':'วันพ่อแห่งชาติ',   '2027-12-10':'วันรัฐธรรมนูญ',
+  '2027-12-31':'วันสิ้นปี',
 };
 
 // THEME
@@ -1231,6 +1407,7 @@ function renderStats() {
     <div class="forecast-prog-wrap"><div class="forecast-prog" style="width:${pct}%"></div></div>`;
   renderChart('chartIncome', state.months.map((m,i)=>({ label:m.name.split('-')[0], val:getMonthCalc(i).totalIncome, color:'linear-gradient(180deg,var(--accent),var(--accent-purple))' })));
   renderChart('chartOT', state.months.map((m,i)=>{ const c=getMonthCalc(i); return { label:m.name.split('-')[0], val:c.sumOT1+c.sumOT15+c.sumOT3, color:'linear-gradient(180deg,var(--yellow),var(--accent-pink))' }; }));
+  renderChart('chartExp', state.months.map((m,i)=>({ label:m.name.split('-')[0], val:getMonthCalc(i).expTotal, color:'linear-gradient(180deg,var(--red),var(--accent-pink))' })));
 }
 
 function renderChart(id, data) {
@@ -1249,7 +1426,7 @@ function applyHolidayHighlight() {
   const m=state.months[state.currentMonth];
   m.days.forEach((d,i)=>{
     if (!rows[i]) return;
-    const isHoliday=TH_HOLIDAYS.has(d.date);
+    const isHoliday=isHolidayDate(d.date);
     rows[i].classList.toggle('holiday-row',isHoliday);
     if (isHoliday) {
       const cell=rows[i].querySelector('td:first-child');
@@ -1259,7 +1436,7 @@ function applyHolidayHighlight() {
       // สร้าง cell ใหม่ทั้งหมดแทน innerHTML+= เพื่อป้องกัน badge ซ้อน
       let html=`<strong>${dt.getDate()}</strong>`;
       if (isSat&&hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
-      html+=`<br><span class="holiday-badge">${TH_HOLIDAY_NAMES[d.date]||'หยุด'}</span>`;
+      html+=`<br><span class="holiday-badge">${getHolidayName(d.date)||'หยุด'}</span>`;
       cell.innerHTML=html;
     }
   });
@@ -1277,6 +1454,11 @@ async function init() {
   applyTheme(state.theme, state.lightMode);
   document.querySelectorAll('.pin-btn:not(.empty)').forEach(b=>b.addEventListener('click',()=>haptic(8)));
   ['omoda_ot_v1','omoda_ot_v2'].forEach(k=>localStorage.removeItem(k));
+  // FIX: ถ้ายัง lock อยู่หลัง reload ให้เริ่ม timer ต่อทันที
+  if (Date.now() < lockUntil) {
+    document.getElementById('pinSubText').textContent = 'ระบบล็อกชั่วคราว';
+    startLockTimer();
+  }
 }
 init();
 </script>
