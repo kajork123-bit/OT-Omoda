@@ -35,13 +35,13 @@
     --glow-pink: 0 0 18px rgba(240,64,160,0.35);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { overflow-x: hidden; width: 100%; max-width: 100vw; }
+  html, body { overflow-x: hidden; overflow-y: auto; width: 100%; max-width: 100vw; min-height: 100%; -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; touch-action: pan-y; }
   body { 
     font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); 
     min-height: 100vh; font-size: 15px; 
     background-image: radial-gradient(ellipse at 20% 0%, rgba(0,212,255,0.06) 0%, transparent 60%), 
                       radial-gradient(ellipse at 80% 100%, rgba(240,64,160,0.06) 0%, transparent 60%);
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -991,8 +991,6 @@ function renderOTTable() {
     const isToday = d.date === todayStr;
     if (isToday) tr.className = (tr.className ? tr.className + ' ' : '') + 'today-row';
     const bCls = isSat?'sat':isSun?'sun':'wd';
-    const hasOT = (parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
-    const satBadge = isSat&&hasOT?`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`:'';
     const cbHtml = ['travel','lunch','foodOT','shift'].map(f=>`
       <td style="padding:2px;"><label style="display:flex;align-items:center;justify-content:center;cursor:pointer;width:100%;height:32px;">
         <input type="checkbox" ${d[f]?'checked':''} style="width:18px;height:18px;accent-color:var(--green);cursor:pointer;"
@@ -1000,13 +998,14 @@ function renderOTTable() {
       </label></td>`).join('');
     const noteHtml = `<td style="padding:2px;"><input type="text" value="${(d.note||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="—" style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:3px 4px;font-family:'Sarabun',sans-serif;text-align:center;" data-mi="${mi}" data-di="${i}" data-field="note" maxlength="30"></td>`;
     tr.innerHTML = `
-      <td><strong>${dt.getDate()}</strong>${satBadge}${isToday ? '<br><span class="today-badge">วันนี้</span>' : ''}</td>
+      <td></td>
       <td><span class="day-badge ${bCls}">${DAYS_SHORT[dow]}</span></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot1}" class="${d.ot1?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot1"></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot15}" class="${d.ot15?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot15"></td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" max="${MAX_OT_HOURS}" value="${d.ot3}" class="${d.ot3?'has-val':''}" data-mi="${mi}" data-di="${i}" data-field="ot3"></td>
       ${cbHtml}${noteHtml}`;
     body.appendChild(tr);
+    updateDayCellContent(tr, d);
   });
   // listener ผูกไว้ที่ wrapper ซึ่งไม่ถูก re-create (ดู setupOTTableListener)
   updateFootTotals();
@@ -1034,20 +1033,27 @@ function onOTTableChange(e) {
   updateFootTotals(); renderSummaries(); autoSave();
 }
 
-function updateSatBadge(mi,di) {
-  const d=state.months[mi].days[di];
+function updateDayCellContent(row, d) {
+  const cell=row.querySelector('td:first-child');
+  if (!cell) return;
+  const dt=new Date(d.date);
   const hasOT=(parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
-  const rows=document.getElementById('otTableBody').querySelectorAll('tr');
-  if (!rows[di]) return;
-  const cell=rows[di].querySelector('td:first-child');
-  const dt=new Date(d.date), isSat=dt.getDay()===6;
-  if (!isSat) return;
-  // build cell content cleanly — ไม่ใช้ innerHTML+= เพื่อป้องกัน holiday badge หาย
+  const isSat=dt.getDay()===6;
   const isHoliday=isHolidayDate(d.date);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isToday = d.date === todayStr;
   let html=`<strong>${dt.getDate()}</strong>`;
-  if (hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
+  if (isSat && hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
+  if (isToday) html+=`<br><span class="today-badge">วันนี้</span>`;
   if (isHoliday) html+=`<br><span class="holiday-badge">${getHolidayName(d.date)||'หยุด'}</span>`;
   cell.innerHTML=html;
+}
+
+function updateSatBadge(mi,di) {
+  const d=state.months[mi].days[di];
+  const rows=document.getElementById('otTableBody').querySelectorAll('tr');
+  if (!rows[di]) return;
+  updateDayCellContent(rows[di], d);
 }
 
 function updateFootTotals() {
@@ -1315,6 +1321,40 @@ function showToast(msg) {
 // ═══════════════════════════════════════════════════════════
 //  FIX #5: THAI PUBLIC HOLIDAYS — เพิ่มชื่อครบทุกวัน
 // ═══════════════════════════════════════════════════════════
+function normalizeHolidayKey(value) {
+  if (!value) return '';
+  if (value instanceof Date) {
+    const d = new Date(value);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const str = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(`${str}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isHolidayDate(value) {
+  const key = normalizeHolidayKey(value);
+  if (!key) return false;
+  if (Array.isArray(state?.customHolidays)) {
+    const isCustom = state.customHolidays.some(h => normalizeHolidayKey(h) === key);
+    if (isCustom) return true;
+  }
+  return TH_HOLIDAYS.has(key);
+}
+
+function getHolidayName(value) {
+  const key = normalizeHolidayKey(value);
+  if (!key) return '';
+  if (Array.isArray(state?.customHolidays)) {
+    const customHoliday = state.customHolidays.find(h => normalizeHolidayKey(h) === key);
+    if (typeof customHoliday === 'object' && customHoliday && customHoliday.name) return customHoliday.name;
+    if (typeof customHoliday === 'string') return 'วันหยุดพิเศษ';
+  }
+  return TH_HOLIDAY_NAMES[key] || '';
+}
+
 const TH_HOLIDAYS = new Set([
   '2025-01-01','2025-02-03','2025-04-06','2025-04-07','2025-04-13','2025-04-14','2025-04-15',
   '2025-05-01','2025-05-05','2025-05-12','2025-06-02','2025-06-03','2025-07-11',
@@ -1442,17 +1482,7 @@ function applyHolidayHighlight() {
     if (!rows[i]) return;
     const isHoliday=isHolidayDate(d.date);
     rows[i].classList.toggle('holiday-row',isHoliday);
-    if (isHoliday) {
-      const cell=rows[i].querySelector('td:first-child');
-      const dt=new Date(d.date);
-      const isSat=dt.getDay()===6;
-      const hasOT=(parseFloat(d.ot1)||0)+(parseFloat(d.ot15)||0)+(parseFloat(d.ot3)||0)>0;
-      // สร้าง cell ใหม่ทั้งหมดแทน innerHTML+= เพื่อป้องกัน badge ซ้อน
-      let html=`<strong>${dt.getDate()}</strong>`;
-      if (isSat&&hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
-      html+=`<br><span class="holiday-badge">${getHolidayName(d.date)||'หยุด'}</span>`;
-      cell.innerHTML=html;
-    }
+    updateDayCellContent(rows[i], d);
   });
 }
 
