@@ -1174,6 +1174,36 @@ function renderExpenses() {
   });
 }
 
+function renderCustomHolidayList() {
+  const wrap = document.getElementById('customHolidayList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  if (!Array.isArray(state.customHolidays) || state.customHolidays.length === 0) {
+    wrap.innerHTML = '<div style="padding:12px 14px;color:var(--text2);font-size:13px;">ยังไม่มีวันหยุดพิเศษ</div>';
+    return;
+  }
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '8px';
+  state.customHolidays.forEach((holiday, index) => {
+    const item = document.createElement('div');
+    item.className = 'settings-row';
+    item.style.padding = '10px 12px';
+    const dateValue = typeof holiday === 'object' ? (holiday.date || holiday.value || holiday.day || holiday.key || '') : holiday;
+    const label = (typeof holiday === 'object' && holiday && holiday.name) ? holiday.name : 'วันหยุดพิเศษ';
+    const displayDate = dateValue ? new Date(`${dateValue}T00:00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    item.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div class="settings-row-label">${label}</div>
+        <div class="settings-row-sub">${displayDate}</div>
+      </div>
+      <button class="btn btn-sm btn-danger-outline" data-delholiday="${index}">ลบ</button>`;
+    container.appendChild(item);
+  });
+  wrap.appendChild(container);
+}
+
 function renderSettings() {
   document.getElementById('salaryInput').value=state.salary;
   document.getElementById('rateOT1').value=state.rateOT1.toFixed(2);
@@ -1187,6 +1217,7 @@ function renderSettings() {
       ${state.months.length>1?`<button class="btn btn-sm btn-danger-outline" data-delmonth="${i}">ลบ</button>`:''}`;
     wrap.appendChild(row);
   });
+  renderCustomHolidayList();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1209,6 +1240,37 @@ document.getElementById('expenseList').addEventListener('click', e=>{
 document.getElementById('btnAddExpense').addEventListener('click', ()=>{
   state.months[state.currentMonth].expenses.push({name:'รายการใหม่',amount:0,paid:false});
   renderExpenses(); renderSummaries(); autoSave();
+});
+function addCustomHoliday() {
+  const input = document.getElementById('newHolidayDate');
+  const value = input.value.trim();
+  if (!value) { showToast('⚠️ เลือกวันที่ก่อน'); return; }
+  const key = normalizeHolidayKey(value);
+  if (!key) { showToast('⚠️ วันที่ไม่ถูกต้อง'); return; }
+  const exists = Array.isArray(state.customHolidays) && state.customHolidays.some(h => normalizeHolidayKey(typeof h === 'object' ? (h.date || h.value || h.day || h.key) : h) === key);
+  if (exists) { showToast('⚠️ เพิ่มวันหยุดนี้แล้ว'); return; }
+  if (!Array.isArray(state.customHolidays)) state.customHolidays = [];
+  state.customHolidays.push({ date: key, name: 'วันหยุดพิเศษ' });
+  input.value = '';
+  renderCustomHolidayList();
+  applyHolidayHighlight();
+  markDirty(); saveAll(true);
+  showToast('✅ เพิ่มวันหยุดพิเศษแล้ว');
+}
+function removeCustomHoliday(index) {
+  if (!Array.isArray(state.customHolidays)) return;
+  state.customHolidays.splice(index, 1);
+  renderCustomHolidayList();
+  applyHolidayHighlight();
+  markDirty(); saveAll(true);
+  showToast('🗑 ลบวันหยุดพิเศษแล้ว');
+}
+document.getElementById('btnAddHoliday').addEventListener('click', addCustomHoliday);
+document.getElementById('newHolidayDate').addEventListener('keydown', e => { if (e.key === 'Enter') addCustomHoliday(); });
+document.getElementById('customHolidayList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-delholiday]');
+  if (!btn) return;
+  removeCustomHoliday(parseInt(btn.dataset.delholiday, 10));
 });
 document.getElementById('diligenceAmountInput').addEventListener('input', function(){
   const val = parseFloat(this.value) || 0;
@@ -1352,6 +1414,11 @@ function normalizeHolidayKey(value) {
     const d = new Date(value);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
+  if (typeof value === 'object') {
+    const direct = value.date || value.value || value.day || value.key || value.id;
+    if (direct) return normalizeHolidayKey(direct);
+    return '';
+  }
   const str = String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   const d = new Date(`${str}T00:00:00`);
@@ -1359,11 +1426,18 @@ function normalizeHolidayKey(value) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+function getCustomHolidayEntry(value) {
+  if (!Array.isArray(state?.customHolidays)) return null;
+  const key = normalizeHolidayKey(value);
+  if (!key) return null;
+  return state.customHolidays.find(h => normalizeHolidayKey(typeof h === 'object' ? (h.date || h.value || h.day || h.key) : h) === key) || null;
+}
+
 function isHolidayDate(value) {
   const key = normalizeHolidayKey(value);
   if (!key) return false;
   if (Array.isArray(state?.customHolidays)) {
-    const isCustom = state.customHolidays.some(h => normalizeHolidayKey(h) === key);
+    const isCustom = state.customHolidays.some(h => normalizeHolidayKey(typeof h === 'object' ? (h.date || h.value || h.day || h.key) : h) === key);
     if (isCustom) return true;
   }
   return TH_HOLIDAYS.has(key);
@@ -1372,10 +1446,10 @@ function isHolidayDate(value) {
 function getHolidayName(value) {
   const key = normalizeHolidayKey(value);
   if (!key) return '';
-  if (Array.isArray(state?.customHolidays)) {
-    const customHoliday = state.customHolidays.find(h => normalizeHolidayKey(h) === key);
+  const customHoliday = getCustomHolidayEntry(value);
+  if (customHoliday) {
     if (typeof customHoliday === 'object' && customHoliday && customHoliday.name) return customHoliday.name;
-    if (typeof customHoliday === 'string') return 'วันหยุดพิเศษ';
+    return 'วันหยุดพิเศษ';
   }
   return TH_HOLIDAY_NAMES[key] || '';
 }
