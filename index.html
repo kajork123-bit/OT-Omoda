@@ -478,12 +478,17 @@
       <div class="summary-row-item"><span>ค่ากะ <small style="color:var(--text3)">100฿/วัน</small></span><span id="incShift">0 ฿</span></div>
       <div class="summary-row-item"><span>ค่าเช่าบ้าน <small style="color:var(--text3)">1,200฿/เดือน</small></span><span id="incRent">0 ฿</span></div>
       <div class="summary-row-item">
-        <span>เบี้ยขยัน <small style="color:var(--text3)">1,000฿/เดือน</small></span>
+        <span>เบี้ยขยัน <small style="color:var(--text3)">กรอกจำนวนจริง</small></span>
         <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
           <span id="incDiligenceAmt">0 ฿</span>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text2);white-space:nowrap;">
-            <input type="checkbox" id="diligenceCheck" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;"> ได้รับ
-          </label>
+          <input type="number" id="diligenceAmountInput" inputmode="numeric" step="1" min="0" value="0" style="width:92px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-size:13px;font-family:'Sarabun',sans-serif;text-align:right;">
+        </span>
+      </div>
+      <div class="summary-row-item">
+        <span>เงิน KPI <small style="color:var(--text3)">กรอกจำนวนจริง</small></span>
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+          <span id="incKpiAmt">0 ฿</span>
+          <input type="number" id="kpiAmountInput" inputmode="numeric" step="1" min="0" value="0" style="width:92px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-size:13px;font-family:'Sarabun',sans-serif;text-align:right;">
         </span>
       </div>
       <div class="summary-row-item total-row"><span>รวมรายรับ</span><span class="val-green" id="incTotal">0 ฿</span></div>
@@ -595,6 +600,7 @@
 // ═══════════════════════════════════════════════════════════
 const STORAGE_KEY     = 'omoda_ot_v3';
 const SAT_BONUS       = 300;
+const SAT_FOUR_DAY_BONUS = 500;
 const RENT_AMT        = 1200;
 const DILIGENCE_AMT   = 1000;
 const TRAVEL_RATE     = 50;
@@ -652,6 +658,15 @@ async function loadState() {
       }
       Object.assign(state, parsed);
       if (!state.customHolidays) state.customHolidays = [];
+      if (Array.isArray(state.months)) {
+        state.months.forEach(m => {
+          if (typeof m.diligence === 'boolean' && m.diligenceAmount === undefined) {
+            m.diligenceAmount = m.diligence ? DILIGENCE_AMT : 0;
+          }
+          if (m.diligenceAmount === undefined || Number.isNaN(Number(m.diligenceAmount))) m.diligenceAmount = 0;
+          if (m.kpiAmount === undefined || Number.isNaN(Number(m.kpiAmount))) m.kpiAmount = 0;
+        });
+      }
     }
   } catch(e) {}
   // ใช้ครั้งแรก ตั้ง default PIN = 1234
@@ -799,7 +814,7 @@ function createMonth(name, startDateStr) {
     days.push({ date: d.toISOString().split('T')[0], dow: d.getDay(),
                 ot1: '', ot15: '', ot3: '', travel: false, lunch: false, foodOT: false, shift: false, note: '' });
   }
-  return { id: Date.now()+Math.random(), name, startDate: startDateStr, days, expenses: [], diligence: false };
+  return { id: Date.now()+Math.random(), name, startDate: startDateStr, days, expenses: [], diligence: false, diligenceAmount: 0, kpiAmount: 0 };
 }
 
 function switchMonth(idx) { state.currentMonth = idx; renderAll(); }
@@ -858,16 +873,17 @@ function getMonthCalc(mIdx) {
     if (d.dow===6 && (o1+o15+o3)>0) satDaysOT++;
   });
   const mOT1=sumOT1*state.rateOT1, mOT15=sumOT15*state.rateOT15, mOT3=sumOT3*state.rateOT3;
-  const satBonus=satDaysOT*SAT_BONUS, totalOT=mOT1+mOT15+mOT3;
+  const satBonus=satDaysOT*SAT_BONUS + (satDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0);
+  const totalOT=mOT1+mOT15+mOT3;
   const sumTravel=cntTravel*TRAVEL_RATE, sumLunch=cntLunch*LUNCH_RATE;
   const sumFoodOT=cntFoodOT*FOOD_OT_RATE, sumShift=cntShift*SHIFT_RATE;
-  const sumRent=RENT_AMT, sumDiligence=m.diligence?DILIGENCE_AMT:0;
-  const totalAllowance=sumTravel+sumLunch+sumFoodOT+sumShift+sumRent+sumDiligence;
+  const sumRent=RENT_AMT, sumDiligence=Number(m.diligenceAmount) || 0, sumKpi=Number(m.kpiAmount) || 0;
+  const totalAllowance=sumTravel+sumLunch+sumFoodOT+sumShift+sumRent+sumDiligence+sumKpi;
   const totalIncome=state.salary+totalOT+satBonus+totalAllowance;
   let expTotal=0, expPaid=0;
   m.expenses.forEach(e=>{ expTotal+=(e.amount||0); if(e.paid) expPaid+=(e.amount||0); });
   return { sumOT1,sumOT15,sumOT3,cntTravel,cntLunch,cntFoodOT,cntShift,
-           sumTravel,sumLunch,sumFoodOT,sumShift,sumRent,sumDiligence,
+           sumTravel,sumLunch,sumFoodOT,sumShift,sumRent,sumDiligence,sumKpi,
            satDaysOT,mOT1,mOT15,mOT3,satBonus,totalOT,totalAllowance,totalIncome,
            expTotal,expPaid,expUnpaid:expTotal-expPaid,netBalance:totalIncome-expTotal };
 }
@@ -1100,8 +1116,10 @@ function renderSummaries() {
   document.getElementById('incShift').textContent  = fmt(c.sumShift)+' ฿'+(c.cntShift>0?` (${c.cntShift} วัน)`:'');
   document.getElementById('incRent').textContent   = fmt(c.sumRent)+' ฿';
   document.getElementById('incDiligenceAmt').textContent = fmt(c.sumDiligence)+' ฿';
-  const chk=document.getElementById('diligenceCheck');
-  if (chk) chk.checked=state.months[state.currentMonth].diligence||false;
+  document.getElementById('incKpiAmt').textContent = fmt(c.sumKpi)+' ฿';
+  const currMonth = state.months[state.currentMonth];
+  document.getElementById('diligenceAmountInput').value = (currMonth.diligenceAmount || 0).toString();
+  document.getElementById('kpiAmountInput').value = (currMonth.kpiAmount || 0).toString();
   document.getElementById('incTotal').textContent  = fmt(c.totalIncome)+' ฿';
   document.getElementById('rateDisplay').innerHTML = `
     <div class="rate-item"><span class="rate-badge ot1">OT × 1</span><span>${state.rateOT1.toFixed(2)} ฿/ชม.</span></div>
@@ -1192,8 +1210,15 @@ document.getElementById('btnAddExpense').addEventListener('click', ()=>{
   state.months[state.currentMonth].expenses.push({name:'รายการใหม่',amount:0,paid:false});
   renderExpenses(); renderSummaries(); autoSave();
 });
-document.getElementById('diligenceCheck').addEventListener('change', function(){
-  state.months[state.currentMonth].diligence=this.checked; renderSummaries(); autoSave();
+document.getElementById('diligenceAmountInput').addEventListener('input', function(){
+  const val = parseFloat(this.value) || 0;
+  state.months[state.currentMonth].diligenceAmount = val;
+  markDirty(); renderSummaries(); autoSave();
+});
+document.getElementById('kpiAmountInput').addEventListener('input', function(){
+  const val = parseFloat(this.value) || 0;
+  state.months[state.currentMonth].kpiAmount = val;
+  markDirty(); renderSummaries(); autoSave();
 });
 
 // TABS
