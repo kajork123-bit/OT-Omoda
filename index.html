@@ -407,16 +407,15 @@
       </div>
       <div class="dash-card"><div class="dash-label">OT รวม (ชม.)</div><div class="dash-value" id="dashTotalHours">0</div></div>
       <div class="dash-card"><div class="dash-label">เงิน OT</div><div class="dash-value green" id="dashOTMoney">0 ฿</div></div>
-      <div class="dash-card"><div class="dash-label">รับเงินจากโอทีวันเสาร์เดือนที่แล้ว</div><div class="dash-value" style="color:var(--yellow)" id="dashSatBonus">0 ฿</div></div>
       <div class="dash-card">
-        <div class="dash-label">ได้รับเงินจากโอทีวันเสาร์เดือนที่แล้ว (พื้นฐาน)</div>
-        <div class="dash-value" style="color:var(--yellow)" id="dashCarrySatBonusBase">0 ฿</div>
-        <div class="dash-sub" id="dashCarrySatBonusBaseDetail">300 บาท/วัน</div>
+        <div class="dash-label">เงินโอทีวันเสาร์เดือนนี้ที่จ่ายในเดือนหน้า</div>
+        <div class="dash-value" style="color:var(--yellow)" id="dashCurrentMonthSatBonus">0 ฿</div>
+        <div class="dash-sub" id="dashCurrentMonthSatBonusDetail">0 วัน × 300 บาท</div>
       </div>
       <div class="dash-card">
-        <div class="dash-label">ได้รับเงินจากโอทีวันเสาร์เดือนที่แล้ว (ครบ 4 วัน)</div>
-        <div class="dash-value" style="color:var(--yellow)" id="dashCarrySatBonusExtra">0 ฿</div>
-        <div class="dash-sub" id="dashCarrySatBonusExtraDetail">500 บาทเมื่อครบ 4 วัน</div>
+        <div class="dash-label">เงินที่ได้รับจากโอทีวันเสาร์เดือนที่แล้ว</div>
+        <div class="dash-value" style="color:var(--yellow)" id="dashPrevMonthSatBonus">0 ฿</div>
+        <div class="dash-sub" id="dashPrevMonthSatBonusDetail">0 วัน × 300 บาท</div>
       </div>
       <div class="dash-card"><div class="dash-label">รายจ่ายคงค้าง</div><div class="dash-value red" id="dashUnpaid">0 ฿</div></div>
     </div>
@@ -816,13 +815,27 @@ async function doChangePin() {
 // ═══════════════════════════════════════════════════════════
 //  MONTH MANAGEMENT
 // ═══════════════════════════════════════════════════════════
+function formatDateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+function getPeriodRange(startDateStr) {
+  const start = new Date(`${startDateStr}T00:00:00`);
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  end.setDate(20);
+  return { start, end };
+}
 function createMonth(name, startDateStr) {
-  const start = new Date(startDateStr);
+  const { start, end } = getPeriodRange(startDateStr);
   const days = [];
-  for (let i = 0; i < 31; i++) {
-    const d = new Date(start); d.setDate(start.getDate() + i);
-    days.push({ date: d.toISOString().split('T')[0], dow: d.getDay(),
+  const cur = new Date(start);
+  while (cur <= end) {
+    days.push({ date: formatDateKey(cur), dow: cur.getDay(),
                 ot1: '', ot15: '', ot3: '', travel: false, lunch: false, foodOT: false, shift: false, note: '' });
+    cur.setDate(cur.getDate() + 1);
   }
   return { id: Date.now()+Math.random(), name, startDate: startDateStr, days, expenses: [], diligence: false, diligenceAmount: 0, kpiAmount: 0 };
 }
@@ -831,9 +844,14 @@ function switchMonth(idx) { state.currentMonth = idx; renderAll(); }
 
 function openAddMonth() {
   const last = state.months[state.months.length-1];
-  const ns = new Date(last.startDate); ns.setMonth(ns.getMonth()+1);
-  const nm = new Date(ns);            nm.setMonth(nm.getMonth()+1);
-  document.getElementById('newMonthStart').value = ns.toISOString().split('T')[0];
+  const lastEnd = new Date(`${last.startDate}T00:00:00`);
+  lastEnd.setMonth(lastEnd.getMonth() + 1);
+  lastEnd.setDate(20);
+  const ns = new Date(lastEnd);
+  ns.setDate(ns.getDate() + 1);
+  const nm = new Date(ns);
+  nm.setMonth(nm.getMonth() + 1);
+  document.getElementById('newMonthStart').value = formatDateKey(ns);
   document.getElementById('newMonthName').value  = `${TH_MONTHS[ns.getMonth()]}-${TH_MONTHS[nm.getMonth()%12]} ${ns.getFullYear()}`;
   document.getElementById('addMonthModal').classList.remove('hidden');
 }
@@ -873,6 +891,7 @@ function getMonthCalc(mIdx) {
   const m = state.months[mIdx];
   let sumOT1=0, sumOT15=0, sumOT3=0;
   let cntTravel=0, cntLunch=0, cntFoodOT=0, cntShift=0;
+  let currentMonthSatDaysOT = 0;
   m.days.forEach(d => {
     const o1  = Math.min(parseFloat(d.ot1)  || 0, MAX_OT_HOURS);
     const o15 = Math.min(parseFloat(d.ot15) || 0, MAX_OT_HOURS);
@@ -880,21 +899,23 @@ function getMonthCalc(mIdx) {
     sumOT1+=o1; sumOT15+=o15; sumOT3+=o3;
     if (d.travel) cntTravel++; if (d.lunch) cntLunch++;
     if (d.foodOT) cntFoodOT++; if (d.shift) cntShift++;
+    if (d.dow===6 && (o1+o15+o3)>0) currentMonthSatDaysOT++;
   });
 
-  let satDaysOT = 0;
+  let prevMonthSatDaysOT = 0;
   if (mIdx > 0) {
     const prevMonth = state.months[mIdx - 1];
     prevMonth.days.forEach(d => {
       const o1  = Math.min(parseFloat(d.ot1)  || 0, MAX_OT_HOURS);
       const o15 = Math.min(parseFloat(d.ot15) || 0, MAX_OT_HOURS);
       const o3  = Math.min(parseFloat(d.ot3)  || 0, MAX_OT_HOURS);
-      if (d.dow===6 && (o1+o15+o3)>0) satDaysOT++;
+      if (d.dow===6 && (o1+o15+o3)>0) prevMonthSatDaysOT++;
     });
   }
 
   const mOT1=sumOT1*state.rateOT1, mOT15=sumOT15*state.rateOT15, mOT3=sumOT3*state.rateOT3;
-  const satBonus=satDaysOT*SAT_BONUS + (satDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0);
+  const currentMonthSatBonus=currentMonthSatDaysOT*SAT_BONUS + (currentMonthSatDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0);
+  const satBonus=prevMonthSatDaysOT*SAT_BONUS + (prevMonthSatDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0);
   const totalOT=mOT1+mOT15+mOT3;
   const sumTravel=cntTravel*TRAVEL_RATE, sumLunch=cntLunch*LUNCH_RATE;
   const sumFoodOT=cntFoodOT*FOOD_OT_RATE, sumShift=cntShift*SHIFT_RATE;
@@ -905,7 +926,10 @@ function getMonthCalc(mIdx) {
   m.expenses.forEach(e=>{ expTotal+=(e.amount||0); if(e.paid) expPaid+=(e.amount||0); });
   return { sumOT1,sumOT15,sumOT3,cntTravel,cntLunch,cntFoodOT,cntShift,
            sumTravel,sumLunch,sumFoodOT,sumShift,sumRent,sumDiligence,sumKpi,
-           satDaysOT,mOT1,mOT15,mOT3,satBonus,totalOT,totalAllowance,totalIncome,
+           satDaysOT:prevMonthSatDaysOT,
+           currentMonthSatDaysOT,
+           currentMonthSatBonus,
+           mOT1,mOT15,mOT3,satBonus,totalOT,totalAllowance,totalIncome,
            expTotal,expPaid,expUnpaid:expTotal-expPaid,netBalance:totalIncome-expTotal };
 }
 
@@ -1015,7 +1039,7 @@ function renderOTTable() {
   const body = document.getElementById('otTableBody');
   body.innerHTML = '';
   document.getElementById('otPeriodName').textContent = m.name;
-  const s = new Date(m.startDate), e = new Date(s); e.setDate(s.getDate()+30);
+  const { start: s, end: e } = getPeriodRange(m.startDate);
   document.getElementById('otPeriodRange').textContent =
     `${s.getDate()} ${TH_MONTHS[s.getMonth()]} – ${e.getDate()} ${TH_MONTHS[e.getMonth()]}`;
 
@@ -1117,13 +1141,10 @@ function renderSummaries() {
   document.getElementById('dashNetIncome').textContent  = fmt(c.totalIncome)+' ฿';
   document.getElementById('dashTotalHours').textContent = (c.sumOT1+c.sumOT15+c.sumOT3).toFixed(1)+' ชม.';
   document.getElementById('dashOTMoney').textContent    = fmt(c.totalOT)+' ฿';
-  document.getElementById('dashSatBonus').textContent   = fmt(c.satBonus)+' ฿';
-  const carrySatBase = c.satDaysOT * SAT_BONUS;
-  const carrySatExtra = c.satDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0;
-  document.getElementById('dashCarrySatBonusBase').textContent = fmt(carrySatBase)+' ฿';
-  document.getElementById('dashCarrySatBonusBaseDetail').textContent = `${c.satDaysOT} วัน × 300 บาท`;
-  document.getElementById('dashCarrySatBonusExtra').textContent = fmt(carrySatExtra)+' ฿';
-  document.getElementById('dashCarrySatBonusExtraDetail').textContent = c.satDaysOT >= 4 ? 'ครบ 4 วันแล้ว' : 'ยังไม่ครบ 4 วัน';
+  document.getElementById('dashCurrentMonthSatBonus').textContent = fmt(c.currentMonthSatBonus)+' ฿';
+  document.getElementById('dashCurrentMonthSatBonusDetail').textContent = `${c.currentMonthSatDaysOT} วัน × 300 บาท${c.currentMonthSatDaysOT >= 4 ? ' + โบนัสครบ 4 วัน 500 บาท' : ''}`;
+  document.getElementById('dashPrevMonthSatBonus').textContent = fmt(c.satBonus)+' ฿';
+  document.getElementById('dashPrevMonthSatBonusDetail').textContent = `${c.satDaysOT} วัน × 300 บาท${c.satDaysOT >= 4 ? ' + โบนัสครบ 4 วัน 500 บาท' : ''}`;
   document.getElementById('dashUnpaid').textContent     = fmt(c.expUnpaid)+' ฿';
   const totalH=c.sumOT1+c.sumOT15+c.sumOT3, maxH=Math.max(totalH,0.01);
   document.getElementById('bar1').style.width  = (c.sumOT1/maxH*100)+'%';
