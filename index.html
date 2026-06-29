@@ -408,6 +408,16 @@
       <div class="dash-card"><div class="dash-label">OT รวม (ชม.)</div><div class="dash-value" id="dashTotalHours">0</div></div>
       <div class="dash-card"><div class="dash-label">เงิน OT</div><div class="dash-value green" id="dashOTMoney">0 ฿</div></div>
       <div class="dash-card"><div class="dash-label">โบนัสวันเสาร์ (รับเดือนหน้า)</div><div class="dash-value" style="color:var(--yellow)" id="dashSatBonus">0 ฿</div></div>
+      <div class="dash-card">
+        <div class="dash-label">โบนัสวันเสาร์พื้นฐานที่จะได้รับเดือนนี้</div>
+        <div class="dash-value" style="color:var(--yellow)" id="dashCarrySatBonusBase">0 ฿</div>
+        <div class="dash-sub" id="dashCarrySatBonusBaseDetail">300 บาท/วัน</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-label">โบนัสครบ 4 วันที่จะได้รับเดือนนี้</div>
+        <div class="dash-value" style="color:var(--yellow)" id="dashCarrySatBonusExtra">0 ฿</div>
+        <div class="dash-sub" id="dashCarrySatBonusExtraDetail">500 บาทเมื่อครบ 4 วัน</div>
+      </div>
       <div class="dash-card"><div class="dash-label">รายจ่ายคงค้าง</div><div class="dash-value red" id="dashUnpaid">0 ฿</div></div>
     </div>
     <div style="margin-bottom:12px;">
@@ -1108,6 +1118,12 @@ function renderSummaries() {
   document.getElementById('dashTotalHours').textContent = (c.sumOT1+c.sumOT15+c.sumOT3).toFixed(1)+' ชม.';
   document.getElementById('dashOTMoney').textContent    = fmt(c.totalOT)+' ฿';
   document.getElementById('dashSatBonus').textContent   = fmt(c.satBonus)+' ฿';
+  const carrySatBase = c.satDaysOT * SAT_BONUS;
+  const carrySatExtra = c.satDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0;
+  document.getElementById('dashCarrySatBonusBase').textContent = fmt(carrySatBase)+' ฿';
+  document.getElementById('dashCarrySatBonusBaseDetail').textContent = `${c.satDaysOT} วัน × 300 บาท`;
+  document.getElementById('dashCarrySatBonusExtra').textContent = fmt(carrySatExtra)+' ฿';
+  document.getElementById('dashCarrySatBonusExtraDetail').textContent = c.satDaysOT >= 4 ? 'ครบ 4 วันแล้ว' : 'ยังไม่ครบ 4 วัน';
   document.getElementById('dashUnpaid').textContent     = fmt(c.expUnpaid)+' ฿';
   const totalH=c.sumOT1+c.sumOT15+c.sumOT3, maxH=Math.max(totalH,0.01);
   document.getElementById('bar1').style.width  = (c.sumOT1/maxH*100)+'%';
