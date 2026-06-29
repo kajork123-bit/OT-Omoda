@@ -407,7 +407,7 @@
       </div>
       <div class="dash-card"><div class="dash-label">OT รวม (ชม.)</div><div class="dash-value" id="dashTotalHours">0</div></div>
       <div class="dash-card"><div class="dash-label">เงิน OT</div><div class="dash-value green" id="dashOTMoney">0 ฿</div></div>
-      <div class="dash-card"><div class="dash-label">โบนัสวันเสาร์</div><div class="dash-value" style="color:var(--yellow)" id="dashSatBonus">0 ฿</div></div>
+      <div class="dash-card"><div class="dash-label">โบนัสวันเสาร์ (รับเดือนหน้า)</div><div class="dash-value" style="color:var(--yellow)" id="dashSatBonus">0 ฿</div></div>
       <div class="dash-card"><div class="dash-label">รายจ่ายคงค้าง</div><div class="dash-value red" id="dashUnpaid">0 ฿</div></div>
     </div>
     <div style="margin-bottom:12px;">
@@ -470,7 +470,7 @@
       <div class="summary-row-item"><span>OT × 1</span><span id="incOT1">0 ฿</span></div>
       <div class="summary-row-item"><span>OT × 1.5</span><span id="incOT15">0 ฿</span></div>
       <div class="summary-row-item"><span>OT × 3</span><span id="incOT3">0 ฿</span></div>
-      <div class="summary-row-item"><span>โบนัสวันเสาร์ OT <small style="color:var(--text3)">(300/วัน)</small></span><span class="val-green" id="incSatBonus">0 ฿</span></div>
+      <div class="summary-row-item"><span>โบนัสวันเสาร์ OT <small style="color:var(--text3)">(300/วัน, รับเดือนหน้า)</small></span><span class="val-green" id="incSatBonus">0 ฿</span></div>
       <div class="summary-row-item"><span style="color:var(--text2);font-size:12px;font-weight:700;">── เบี้ยรายวัน ──</span><span></span></div>
       <div class="summary-row-item"><span>ค่าเดินทาง <small style="color:var(--text3)">50฿/วัน</small></span><span id="incTravel">0 ฿</span></div>
       <div class="summary-row-item"><span>ค่าอาหารกลางวัน <small style="color:var(--text3)">50฿/วัน</small></span><span id="incLunch">0 ฿</span></div>
@@ -861,7 +861,7 @@ function closeConfirm() { document.getElementById('confirmModal').classList.add(
 // ═══════════════════════════════════════════════════════════
 function getMonthCalc(mIdx) {
   const m = state.months[mIdx];
-  let sumOT1=0, sumOT15=0, sumOT3=0, satDaysOT=0;
+  let sumOT1=0, sumOT15=0, sumOT3=0;
   let cntTravel=0, cntLunch=0, cntFoodOT=0, cntShift=0;
   m.days.forEach(d => {
     const o1  = Math.min(parseFloat(d.ot1)  || 0, MAX_OT_HOURS);
@@ -870,8 +870,19 @@ function getMonthCalc(mIdx) {
     sumOT1+=o1; sumOT15+=o15; sumOT3+=o3;
     if (d.travel) cntTravel++; if (d.lunch) cntLunch++;
     if (d.foodOT) cntFoodOT++; if (d.shift) cntShift++;
-    if (d.dow===6 && (o1+o15+o3)>0) satDaysOT++;
   });
+
+  let satDaysOT = 0;
+  if (mIdx > 0) {
+    const prevMonth = state.months[mIdx - 1];
+    prevMonth.days.forEach(d => {
+      const o1  = Math.min(parseFloat(d.ot1)  || 0, MAX_OT_HOURS);
+      const o15 = Math.min(parseFloat(d.ot15) || 0, MAX_OT_HOURS);
+      const o3  = Math.min(parseFloat(d.ot3)  || 0, MAX_OT_HOURS);
+      if (d.dow===6 && (o1+o15+o3)>0) satDaysOT++;
+    });
+  }
+
   const mOT1=sumOT1*state.rateOT1, mOT15=sumOT15*state.rateOT15, mOT3=sumOT3*state.rateOT3;
   const satBonus=satDaysOT*SAT_BONUS + (satDaysOT >= 4 ? SAT_FOUR_DAY_BONUS : 0);
   const totalOT=mOT1+mOT15+mOT3;
@@ -1059,7 +1070,7 @@ function updateDayCellContent(row, d) {
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = d.date === todayStr;
   let html=`<strong>${dt.getDate()}</strong>`;
-  if (isSat && hasOT) html+=`<br><span class="sat-bonus-badge">+${SAT_BONUS}฿</span>`;
+  if (isSat && hasOT) html+=`<br><span class="sat-bonus-badge">รับเดือนหน้า +${SAT_BONUS}฿</span>`;
   if (isToday) html+=`<br><span class="today-badge">วันนี้</span>`;
   if (isHoliday) html+=`<br><span class="holiday-badge">${getHolidayName(d.date)||'หยุด'}</span>`;
   cell.innerHTML=html;
